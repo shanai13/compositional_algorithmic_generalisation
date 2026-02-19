@@ -1,0 +1,32 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Wandb
+wandb/
+
+# Data / checkpoints
+data/
+checkpoints/
+*.tfrecords
+*.ckpt
+*.pkl
+
+# Jupyter
+.ipynb_checkpoints/
