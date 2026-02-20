@@ -119,17 +119,22 @@ def get_all_variants() -> Dict[str, VariantParams]:
 # Curation on 48 candidates ({add,min,max,multiply} x {min,max} x {<,>}
 # x {identity,reciprocal,square}):
 #   17 GOOD, 6 MARGINAL, 25 DEGENERATE from initial curation.
-#   Then dropped 2 more for float32 underflow:
-#     multiply_min_<          — products of w∈[0.1,1] → 1e-15 at n=16
-#     multiply_min_<_square   — products of w²∈[0.01,1] → 1e-30 at n=16
-#   Also previously filtered: multiply_max_>_reciprocal (VALUE_EXPLOSION)
 #
-# Final: 15 GOOD + 6 MARGINAL = 21 viable.
+# Additional filtering (post-curation):
+#   Dropped multiply_min_< (identity, square) — float32 underflow
+#   Dropped multiply_max_>_reciprocal — value explosion
+#   Dropped add_max_> (identity, reciprocal, square) — longest path via
+#     iterative relaxation does NOT converge on cyclic graphs. Values grow
+#     each iteration (cycles allow revisiting edges). First training run
+#     confirmed: add_max_>_reciprocal reached only 20.2% accuracy while
+#     other reciprocal variants hit 90%+, polluting the reciprocal signal
+#     for test-time composition. converged_at=-1 in curation.
+#
+# Final: 12 GOOD + 6 MARGINAL = 18 viable.
 
 VIABLE_VARIANTS: List[str] = [
-    # GOOD (15)
+    # GOOD (12)
     'add_min_<', 'add_min_<_reciprocal', 'add_min_<_square',
-    'add_max_>', 'add_max_>_reciprocal', 'add_max_>_square',
     'max_min_<', 'max_min_<_reciprocal', 'max_min_<_square',
     'min_max_>', 'min_max_>_reciprocal', 'min_max_>_square',
     'multiply_max_>', 'multiply_max_>_square',
@@ -143,26 +148,23 @@ VIABLE_VARIANTS: List[str] = [
 # Train / test split (4-axis compositional)
 # ---------------------------------------------------------------------------
 #
-# 11 train + 4 test, all GOOD (source-dependent) variants.
+# 9 train + 3 test, all GOOD (source-dependent) variants.
 # Every primitive value in test appears in ≥2 training variants.
 #
 # Test variants — novel 4-tuples:
 #   add_min_<_reciprocal:    add ✓ min ✓ < ✓ reciprocal ✓
-#   add_max_>_square:        add ✓ max ✓ > ✓ square ✓
 #   max_min_<_square:        max ✓ min ✓ < ✓ square ✓
 #   min_max_>_reciprocal:    min ✓ max ✓ > ✓ reciprocal ✓
 #
 # Primitive coverage in training:
-#   combine:          add(4) max(2) min(2) multiply(3) — all 4 covered
-#   aggregate:        min(5) max(6) — both covered
-#   compare:          <(5) >(6) — both covered
-#   weight_transform: identity(5) reciprocal(3) square(3) — all 3 covered
+#   combine:          add(2) max(2) min(2) multiply(3) — all 4 covered
+#   aggregate:        min(5) max(4) — both covered
+#   compare:          <(5) >(4) — both covered
+#   weight_transform: identity(4) reciprocal(2) square(3) — all 3 covered
 
 TRAIN_VARIANTS: List[str] = [
     'add_min_<',                # shortest path (identity)
     'add_min_<_square',         # shortest path (squared weights)
-    'add_max_>',                # longest path (identity)
-    'add_max_>_reciprocal',     # longest path (reciprocal weights)
     'max_min_<',                # minimax path (identity)
     'max_min_<_reciprocal',     # minimax path (reciprocal)
     'min_max_>',                # widest path (identity)
@@ -174,7 +176,6 @@ TRAIN_VARIANTS: List[str] = [
 
 TEST_VARIANTS: List[str] = [
     'add_min_<_reciprocal',     # novel: add+min+<+reciprocal
-    'add_max_>_square',         # novel: add+max+>+square
     'max_min_<_square',         # novel: max+min+<+square
     'min_max_>_reciprocal',     # novel: min+max+>+reciprocal
 ]

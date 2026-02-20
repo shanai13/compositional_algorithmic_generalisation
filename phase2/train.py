@@ -61,7 +61,7 @@ class TrainConfig:
     decode_hints: bool = True
     encoder_init: str = 'xavier_on_scalars'
     dropout_prob: float = 0.0
-    hint_teacher_forcing: float = 0.0
+    hint_teacher_forcing: float = 0.5
     hint_repred_mode: str = 'soft'
 
     # Training.
@@ -80,7 +80,7 @@ class TrainConfig:
     checkpoint_dir: str = 'checkpoints/conditioned'
     wandb_enabled: bool = True
     wandb_project: str = 'compositional_algorithmic_generalisation'
-    wandb_entity: str = 'shanai'
+    wandb_entity: Optional[str] = None
     name: str = 'conditioned_v1'
 
 
