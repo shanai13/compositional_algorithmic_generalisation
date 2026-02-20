@@ -31,10 +31,14 @@ Features = samplers.Features
 
 
 def _clip_inf(arr: np.ndarray) -> np.ndarray:
-    """Replace inf/-inf with finite proxy values."""
+    """Replace inf/-inf with 0.0 for neural network compatibility.
+
+    Unreachable nodes (at inf/-inf) are set to 0.0. The model
+    distinguishes them via the source indicator hint (s) and the
+    predecessor hint (pred=self for unreachable nodes).
+    """
     out = arr.copy()
-    out[out == np.inf] = INF_PROXY
-    out[out == -np.inf] = -INF_PROXY
+    out[~np.isfinite(out)] = 0.0
     return out
 
 

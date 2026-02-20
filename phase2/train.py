@@ -80,7 +80,7 @@ class TrainConfig:
     checkpoint_dir: str = 'checkpoints/conditioned'
     wandb_enabled: bool = True
     wandb_project: str = 'compositional_algorithmic_generalisation'
-    wandb_entity: Optional[str] = None
+    wandb_entity: str = 'shanai'
     name: str = 'conditioned_v1'
 
 
