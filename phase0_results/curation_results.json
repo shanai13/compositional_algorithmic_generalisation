@@ -1,0 +1,628 @@
+{
+  "add_max_<": {
+    "name": "add_max_<",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.025,
+    "avg_unique_fraction": 0.11875,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.8,
+    "issues": [
+      "NO_UPDATES",
+      "LOW_DIVERSITY"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "add_max_<_reciprocal": {
+    "name": "add_max_<_reciprocal",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.025,
+    "avg_unique_fraction": 0.11875,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.8,
+    "issues": [
+      "NO_UPDATES",
+      "LOW_DIVERSITY"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "add_max_<_square": {
+    "name": "add_max_<_square",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.025,
+    "avg_unique_fraction": 0.11875,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.8,
+    "issues": [
+      "NO_UPDATES",
+      "LOW_DIVERSITY"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "add_max_>": {
+    "name": "add_max_>",
+    "convergence_rate": 0.0,
+    "avg_update_fraction": 1.0,
+    "avg_unique_fraction": 1.0,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.0,
+    "issues": [],
+    "quality": "GOOD",
+    "viable": true
+  },
+  "add_max_>_reciprocal": {
+    "name": "add_max_>_reciprocal",
+    "convergence_rate": 0.0,
+    "avg_update_fraction": 1.0,
+    "avg_unique_fraction": 1.0,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.0,
+    "issues": [],
+    "quality": "GOOD",
+    "viable": true
+  },
+  "add_max_>_square": {
+    "name": "add_max_>_square",
+    "convergence_rate": 0.0,
+    "avg_update_fraction": 1.0,
+    "avg_unique_fraction": 1.0,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.0,
+    "issues": [],
+    "quality": "GOOD",
+    "viable": true
+  },
+  "add_min_<": {
+    "name": "add_min_<",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.90625,
+    "avg_unique_fraction": 1.0,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.0,
+    "issues": [],
+    "quality": "GOOD",
+    "viable": true
+  },
+  "add_min_<_reciprocal": {
+    "name": "add_min_<_reciprocal",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.90625,
+    "avg_unique_fraction": 1.0,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.0,
+    "issues": [],
+    "quality": "GOOD",
+    "viable": true
+  },
+  "add_min_<_square": {
+    "name": "add_min_<_square",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.90625,
+    "avg_unique_fraction": 1.0,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.0,
+    "issues": [],
+    "quality": "GOOD",
+    "viable": true
+  },
+  "add_min_>": {
+    "name": "add_min_>",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.025,
+    "avg_unique_fraction": 0.11875,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.8,
+    "issues": [
+      "NO_UPDATES",
+      "LOW_DIVERSITY"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "add_min_>_reciprocal": {
+    "name": "add_min_>_reciprocal",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.025,
+    "avg_unique_fraction": 0.11875,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.8,
+    "issues": [
+      "NO_UPDATES",
+      "LOW_DIVERSITY"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "add_min_>_square": {
+    "name": "add_min_>_square",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.025,
+    "avg_unique_fraction": 0.11875,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.8,
+    "issues": [
+      "NO_UPDATES",
+      "LOW_DIVERSITY"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "max_max_<": {
+    "name": "max_max_<",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.025,
+    "avg_unique_fraction": 0.025,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 1.0,
+    "issues": [
+      "NO_UPDATES",
+      "LOW_DIVERSITY",
+      "UNIFORM_OUTPUT"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "max_max_<_reciprocal": {
+    "name": "max_max_<_reciprocal",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.025,
+    "avg_unique_fraction": 0.025,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 1.0,
+    "issues": [
+      "NO_UPDATES",
+      "LOW_DIVERSITY",
+      "UNIFORM_OUTPUT"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "max_max_<_square": {
+    "name": "max_max_<_square",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.025,
+    "avg_unique_fraction": 0.025,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 1.0,
+    "issues": [
+      "NO_UPDATES",
+      "LOW_DIVERSITY",
+      "UNIFORM_OUTPUT"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "max_max_>": {
+    "name": "max_max_>",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 1.0,
+    "avg_unique_fraction": 0.09375,
+    "source_dependent_rate": 0.0,
+    "all_same_rate": 1.0,
+    "issues": [
+      "LOW_DIVERSITY",
+      "SOURCE_INDEPENDENT",
+      "UNIFORM_OUTPUT"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "max_max_>_reciprocal": {
+    "name": "max_max_>_reciprocal",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 1.0,
+    "avg_unique_fraction": 0.09375,
+    "source_dependent_rate": 0.0,
+    "all_same_rate": 1.0,
+    "issues": [
+      "LOW_DIVERSITY",
+      "SOURCE_INDEPENDENT",
+      "UNIFORM_OUTPUT"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "max_max_>_square": {
+    "name": "max_max_>_square",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 1.0,
+    "avg_unique_fraction": 0.09375,
+    "source_dependent_rate": 0.0,
+    "all_same_rate": 1.0,
+    "issues": [
+      "LOW_DIVERSITY",
+      "SOURCE_INDEPENDENT",
+      "UNIFORM_OUTPUT"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "max_min_<": {
+    "name": "max_min_<",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.90625,
+    "avg_unique_fraction": 0.3625,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.0,
+    "issues": [],
+    "quality": "GOOD",
+    "viable": true
+  },
+  "max_min_<_reciprocal": {
+    "name": "max_min_<_reciprocal",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.90625,
+    "avg_unique_fraction": 0.525,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.0,
+    "issues": [],
+    "quality": "GOOD",
+    "viable": true
+  },
+  "max_min_<_square": {
+    "name": "max_min_<_square",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.90625,
+    "avg_unique_fraction": 0.3625,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.0,
+    "issues": [],
+    "quality": "GOOD",
+    "viable": true
+  },
+  "max_min_>": {
+    "name": "max_min_>",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 1.0,
+    "avg_unique_fraction": 0.7375,
+    "source_dependent_rate": 0.0,
+    "all_same_rate": 0.0,
+    "issues": [
+      "SOURCE_INDEPENDENT"
+    ],
+    "quality": "MARGINAL",
+    "viable": false
+  },
+  "max_min_>_reciprocal": {
+    "name": "max_min_>_reciprocal",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 1.0,
+    "avg_unique_fraction": 0.74375,
+    "source_dependent_rate": 0.0,
+    "all_same_rate": 0.0,
+    "issues": [
+      "SOURCE_INDEPENDENT"
+    ],
+    "quality": "MARGINAL",
+    "viable": false
+  },
+  "max_min_>_square": {
+    "name": "max_min_>_square",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 1.0,
+    "avg_unique_fraction": 0.7375,
+    "source_dependent_rate": 0.0,
+    "all_same_rate": 0.0,
+    "issues": [
+      "SOURCE_INDEPENDENT"
+    ],
+    "quality": "MARGINAL",
+    "viable": false
+  },
+  "min_max_<": {
+    "name": "min_max_<",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 1.0,
+    "avg_unique_fraction": 0.74375,
+    "source_dependent_rate": 0.0,
+    "all_same_rate": 0.0,
+    "issues": [
+      "SOURCE_INDEPENDENT"
+    ],
+    "quality": "MARGINAL",
+    "viable": false
+  },
+  "min_max_<_reciprocal": {
+    "name": "min_max_<_reciprocal",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 1.0,
+    "avg_unique_fraction": 0.7375,
+    "source_dependent_rate": 0.0,
+    "all_same_rate": 0.0,
+    "issues": [
+      "SOURCE_INDEPENDENT"
+    ],
+    "quality": "MARGINAL",
+    "viable": false
+  },
+  "min_max_<_square": {
+    "name": "min_max_<_square",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 1.0,
+    "avg_unique_fraction": 0.74375,
+    "source_dependent_rate": 0.0,
+    "all_same_rate": 0.0,
+    "issues": [
+      "SOURCE_INDEPENDENT"
+    ],
+    "quality": "MARGINAL",
+    "viable": false
+  },
+  "min_max_>": {
+    "name": "min_max_>",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.90625,
+    "avg_unique_fraction": 0.525,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.0,
+    "issues": [],
+    "quality": "GOOD",
+    "viable": true
+  },
+  "min_max_>_reciprocal": {
+    "name": "min_max_>_reciprocal",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.90625,
+    "avg_unique_fraction": 0.3625,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.0,
+    "issues": [],
+    "quality": "GOOD",
+    "viable": true
+  },
+  "min_max_>_square": {
+    "name": "min_max_>_square",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.90625,
+    "avg_unique_fraction": 0.525,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.0,
+    "issues": [],
+    "quality": "GOOD",
+    "viable": true
+  },
+  "min_min_<": {
+    "name": "min_min_<",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 1.0,
+    "avg_unique_fraction": 0.09375,
+    "source_dependent_rate": 0.0,
+    "all_same_rate": 1.0,
+    "issues": [
+      "LOW_DIVERSITY",
+      "SOURCE_INDEPENDENT",
+      "UNIFORM_OUTPUT"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "min_min_<_reciprocal": {
+    "name": "min_min_<_reciprocal",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 1.0,
+    "avg_unique_fraction": 0.09375,
+    "source_dependent_rate": 0.0,
+    "all_same_rate": 1.0,
+    "issues": [
+      "LOW_DIVERSITY",
+      "SOURCE_INDEPENDENT",
+      "UNIFORM_OUTPUT"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "min_min_<_square": {
+    "name": "min_min_<_square",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 1.0,
+    "avg_unique_fraction": 0.09375,
+    "source_dependent_rate": 0.0,
+    "all_same_rate": 1.0,
+    "issues": [
+      "LOW_DIVERSITY",
+      "SOURCE_INDEPENDENT",
+      "UNIFORM_OUTPUT"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "min_min_>": {
+    "name": "min_min_>",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.025,
+    "avg_unique_fraction": 0.025,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 1.0,
+    "issues": [
+      "NO_UPDATES",
+      "LOW_DIVERSITY",
+      "UNIFORM_OUTPUT"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "min_min_>_reciprocal": {
+    "name": "min_min_>_reciprocal",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.025,
+    "avg_unique_fraction": 0.025,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 1.0,
+    "issues": [
+      "NO_UPDATES",
+      "LOW_DIVERSITY",
+      "UNIFORM_OUTPUT"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "min_min_>_square": {
+    "name": "min_min_>_square",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.025,
+    "avg_unique_fraction": 0.025,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 1.0,
+    "issues": [
+      "NO_UPDATES",
+      "LOW_DIVERSITY",
+      "UNIFORM_OUTPUT"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "multiply_max_<": {
+    "name": "multiply_max_<",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.025,
+    "avg_unique_fraction": 0.11875,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.8,
+    "issues": [
+      "NO_UPDATES",
+      "LOW_DIVERSITY"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "multiply_max_<_reciprocal": {
+    "name": "multiply_max_<_reciprocal",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.025,
+    "avg_unique_fraction": 0.11875,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.8,
+    "issues": [
+      "NO_UPDATES",
+      "LOW_DIVERSITY"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "multiply_max_<_square": {
+    "name": "multiply_max_<_square",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.025,
+    "avg_unique_fraction": 0.11875,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.8,
+    "issues": [
+      "NO_UPDATES",
+      "LOW_DIVERSITY"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "multiply_max_>": {
+    "name": "multiply_max_>",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.90625,
+    "avg_unique_fraction": 1.0,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.0,
+    "issues": [],
+    "quality": "GOOD",
+    "viable": true
+  },
+  "multiply_max_>_reciprocal": {
+    "name": "multiply_max_>_reciprocal",
+    "convergence_rate": 0.0,
+    "avg_update_fraction": 1.0,
+    "avg_unique_fraction": 1.0,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.0,
+    "issues": [
+      "VALUE_EXPLOSION"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "multiply_max_>_square": {
+    "name": "multiply_max_>_square",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.90625,
+    "avg_unique_fraction": 1.0,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.0,
+    "issues": [],
+    "quality": "GOOD",
+    "viable": true
+  },
+  "multiply_min_<": {
+    "name": "multiply_min_<",
+    "convergence_rate": 0.0,
+    "avg_update_fraction": 1.0,
+    "avg_unique_fraction": 0.53125,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.5,
+    "issues": [],
+    "quality": "GOOD",
+    "viable": true
+  },
+  "multiply_min_<_reciprocal": {
+    "name": "multiply_min_<_reciprocal",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.90625,
+    "avg_unique_fraction": 1.0,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.0,
+    "issues": [],
+    "quality": "GOOD",
+    "viable": true
+  },
+  "multiply_min_<_square": {
+    "name": "multiply_min_<_square",
+    "convergence_rate": 0.0,
+    "avg_update_fraction": 1.0,
+    "avg_unique_fraction": 0.20625,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.5,
+    "issues": [],
+    "quality": "GOOD",
+    "viable": true
+  },
+  "multiply_min_>": {
+    "name": "multiply_min_>",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.025,
+    "avg_unique_fraction": 0.11875,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.8,
+    "issues": [
+      "NO_UPDATES",
+      "LOW_DIVERSITY"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "multiply_min_>_reciprocal": {
+    "name": "multiply_min_>_reciprocal",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.025,
+    "avg_unique_fraction": 0.11875,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.8,
+    "issues": [
+      "NO_UPDATES",
+      "LOW_DIVERSITY"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "multiply_min_>_square": {
+    "name": "multiply_min_>_square",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.025,
+    "avg_unique_fraction": 0.11875,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.8,
+    "issues": [
+      "NO_UPDATES",
+      "LOW_DIVERSITY"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  }
+}
