@@ -32,7 +32,8 @@ RELAXATION_SPEC = {
 }
 
 
-# Inf proxy: large finite value replacing inf/-inf in neural network inputs.
-# Chosen to be much larger than any real distance (max ~n*max_weight ≈ 16*1.0)
-# but not so large as to cause numerical issues in float32.
-INF_PROXY = 1e4
+# Inf proxy: finite value replacing inf/-inf in neural network inputs.
+# Must be larger than any real distance (max ~160 for add_max_>_reciprocal
+# at n=16) but small enough to not dominate the MSE loss.
+# Previously 1e4, which caused training instability (MSE on 1e4 ≈ 1e8).
+INF_PROXY = 200.0

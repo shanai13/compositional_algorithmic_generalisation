@@ -32,6 +32,8 @@ from clrs._src import processors
 from clrs._src import samplers
 from clrs._src import specs
 
+from phase1.spec import INF_PROXY
+
 _Array = chex.Array
 _DataPoint = probing.DataPoint
 _Features = samplers.Features
@@ -270,6 +272,44 @@ class ConditionedNet(nets.Net):
 # Conditioned Model (training wrapper)
 # ---------------------------------------------------------------------------
 
+def _masked_d_hint_loss(truth, preds, lengths):
+    """MSE loss on d hints, masking unreachable nodes.
+
+    Standard CLRS hint_loss applies MSE to ALL nodes including those at
+    ±INF_PROXY (unreachable). This overwhelms the loss with useless signal.
+    This function masks those nodes so the model only learns from meaningful
+    distance values.
+
+    Args:
+        truth: DataPoint with shape (T+1, B, n) for d hints.
+        preds: List of T predictions, each (B, n).
+        lengths: (B,) actual number of active timesteps.
+
+    Returns:
+        Scalar loss.
+    """
+    truth_data = truth.data[1:]           # (T, B, n) — skip initial state
+    pred_stack = jnp.stack(preds)         # (T, B, n)
+
+    # Per-element MSE.
+    loss = (pred_stack - truth_data) ** 2  # (T, B, n)
+
+    # Mask: 1 for reachable nodes (|d| below threshold), 0 for unreachable.
+    threshold = INF_PROXY * 0.95
+    reachable = (jnp.abs(truth_data) < threshold).astype(jnp.float32)
+
+    # Timestep activity mask (from CLRS lengths convention).
+    T = truth_data.shape[0]
+    time_idx = jnp.arange(T)[:, None]     # (T, 1)
+    time_mask = (lengths[None, :] > time_idx + 1).astype(jnp.float32)
+    time_mask = jnp.expand_dims(time_mask, -1)  # (T, B, 1)
+
+    # Combined mask.
+    mask = reachable * time_mask
+
+    return jnp.sum(loss * mask) / jnp.maximum(jnp.sum(mask), 1e-8)
+
+
 class ConditionedModel:
     """Complete conditioned model with training, prediction, and checkpointing.
 
@@ -406,12 +446,18 @@ class ConditionedModel:
         if self.decode_hints and hint_preds is not None:
             lengths = query_feedback.features.lengths
             for truth in query_feedback.features.hints:
-                loss = losses.hint_loss(
-                    truth=truth,
-                    preds=[hp[truth.name] for hp in hint_preds],
-                    lengths=lengths,
-                    nb_nodes=nb_nodes,
-                )
+                if truth.name == 'd':
+                    # Custom masked loss for distance hints: ignore
+                    # unreachable nodes (those at ±INF_PROXY).
+                    loss = _masked_d_hint_loss(
+                        truth, [hp['d'] for hp in hint_preds], lengths)
+                else:
+                    loss = losses.hint_loss(
+                        truth=truth,
+                        preds=[hp[truth.name] for hp in hint_preds],
+                        lengths=lengths,
+                        nb_nodes=nb_nodes,
+                    )
                 total_loss += loss
 
         return total_loss
