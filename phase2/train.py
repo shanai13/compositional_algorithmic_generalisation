@@ -72,6 +72,12 @@ class TrainConfig:
     grad_clip_max_norm: float = 1.0
     seed: int = 42
 
+    # Episodic training: hold out variants to incentivise compositional z.
+    episodic: bool = True
+    episode_length: int = 500        # steps per episode
+    episode_train_frac: float = 0.8  # fraction for training on active variants
+    episode_holdout: int = 3         # variants held out per episode
+
     # Evaluation.
     eval_every: int = 250
     eval_samples: int = 128
@@ -89,9 +95,10 @@ class TrainConfig:
 SMOKE_CONFIG = TrainConfig(
     n=8, k=3, batch_size=4, hidden_dim=32, z_dim=16,
     cond_hidden_dim=16, cond_nb_layers=2,
-    nb_triplet_fts=4, train_steps=50,
-    eval_every=25, eval_samples=8, eval_batch_size=4,
+    nb_triplet_fts=4, train_steps=100,
+    eval_every=50, eval_samples=8, eval_batch_size=4,
     randomize_k=True, k_range=(1, 2, 3, 5),
+    episodic=True, episode_length=30, episode_train_frac=0.8, episode_holdout=2,
     wandb_enabled=False, name='smoke_test',
     checkpoint_dir='checkpoints/smoke',
 )
@@ -227,24 +234,61 @@ def train(config: TrainConfig):
 
     # Training loop.
     rng = jax.random.PRNGKey(config.seed)
+    ep_rng = np.random.RandomState(config.seed + 1)
     best_train_acc = -1.0
     t0 = time.time()
 
+    # Episodic state.
+    active_variants = list(TRAIN_VARIANTS)
+    held_out_variants = []
+
     for step in range(1, config.train_steps + 1):
-        batch = pipeline.next()
+        # Episodic variant management: periodically hold out variants.
+        if config.episodic:
+            step_in_episode = (step - 1) % config.episode_length
+            if step_in_episode == 0:
+                # Start new episode: choose held-out variants.
+                held_out_variants = list(ep_rng.choice(
+                    TRAIN_VARIANTS, config.episode_holdout, replace=False))
+                active_variants = [v for v in TRAIN_VARIANTS
+                                   if v not in held_out_variants]
+                print(f'  [Episode] Held out: {held_out_variants}')
+
+            train_phase_steps = int(
+                config.episode_length * config.episode_train_frac)
+            if step_in_episode < train_phase_steps:
+                # Train phase: sample from active variants only.
+                batch = pipeline.next(allowed_variants=active_variants)
+            else:
+                # Meta-eval phase: sample from held-out variants.
+                # Gradient still flows — this pushes the model toward
+                # z representations that generalise to unseen variants.
+                batch = pipeline.next(allowed_variants=held_out_variants)
+        else:
+            batch = pipeline.next()
+
         rng, step_key = jax.random.split(rng)
         loss = model.feedback(step_key, batch.query,
                               batch.conditioning.features)
         loss_val = float(loss)
 
         if config.wandb_enabled and wandb is not None:
-            wandb.log({'train/loss': loss_val, 'step': step}, step=step)
+            is_meta = (config.episodic and
+                       step_in_episode >= int(
+                           config.episode_length * config.episode_train_frac))
+            wandb.log({
+                'train/loss': loss_val,
+                'train/is_meta_eval': float(is_meta),
+                'step': step,
+            }, step=step)
 
         if step % max(1, config.eval_every // 5) == 0:
             elapsed = time.time() - t0
+            phase = 'meta' if (config.episodic and step_in_episode >= int(
+                config.episode_length * config.episode_train_frac)) else 'train'
             print(f'  step {step}/{config.train_steps}: '
                   f'loss={loss_val:.2f}, variant={batch.variant_name}, '
-                  f'{elapsed:.0f}s')
+                  f'phase={phase}, {elapsed:.0f}s')
 
         # Periodic evaluation.
         if step % config.eval_every == 0 or step == config.train_steps:

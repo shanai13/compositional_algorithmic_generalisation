@@ -105,10 +105,16 @@ class ConditionedDataPipeline:
         self._variant_to_id = {
             name: i for i, name in enumerate(self._all_variant_names)}
 
-    def next(self) -> ConditionedBatch:
-        """Generate one conditioned batch."""
-        # Sample a variant uniformly.
-        name = self.variant_names[self.rng.randint(len(self.variant_names))]
+    def next(self, allowed_variants=None) -> ConditionedBatch:
+        """Generate one conditioned batch.
+
+        Args:
+            allowed_variants: Optional list of variant names to sample from.
+                If None, samples from all training variants.
+        """
+        # Sample a variant uniformly from allowed set.
+        pool = allowed_variants if allowed_variants is not None else self.variant_names
+        name = pool[self.rng.randint(len(pool))]
         sampler = self.samplers[name]
 
         # Generate query examples (model predicts these).
