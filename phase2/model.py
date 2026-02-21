@@ -167,8 +167,7 @@ class ConditionedNet(nets.Net):
         self._z = None  # Set before forward pass.
 
     def __call__(self, features_list, repred, algorithm_index,
-                 return_hints, return_all_outputs, cond_features=None,
-                 z_override=None):
+                 return_hints, return_all_outputs, cond_features=None):
         """Forward pass with optional conditioning.
 
         Args:
@@ -179,16 +178,11 @@ class ConditionedNet(nets.Net):
             return_all_outputs: Whether to return all timestep outputs.
             cond_features: Optional Features for conditioning (batch_size=k).
                 If provided, computes z and injects into processing.
-            z_override: Optional array to use as z directly, bypassing the
-                conditioning encoder. Used for the parameter-vector ceiling
-                diagnostic (Diagnostic 3).
 
         Returns:
             (output_preds, hint_preds) same as parent.
         """
-        if z_override is not None:
-            self._z = z_override
-        elif cond_features is not None:
+        if cond_features is not None:
             encoder = ConditioningEncoder(
                 hidden_dim=self.cond_hidden_dim,
                 z_dim=self.z_dim,
@@ -382,8 +376,7 @@ class ConditionedModel:
 
         # Build Haiku function.
         def _use_net(features_list, repred, algorithm_index,
-                     return_hints, return_all_outputs, cond_features=None,
-                     z_override=None):
+                     return_hints, return_all_outputs, cond_features=None):
             net = ConditionedNet(
                 spec=self._spec,
                 hidden_dim=hidden_dim,
@@ -403,8 +396,7 @@ class ConditionedModel:
             )
             return net(features_list, repred, algorithm_index,
                        return_hints, return_all_outputs,
-                       cond_features=cond_features,
-                       z_override=z_override)
+                       cond_features=cond_features)
 
         self.net_fn = hk.transform(_use_net)
 
@@ -419,7 +411,8 @@ class ConditionedModel:
         self.checkpoint_path = checkpoint_path
 
         # JIT-compiled functions.
-        self._jitted_grad = jax.jit(self._compute_grad)
+        # static_argnums=(4,) for repred bool — controls control flow in Haiku.
+        self._jitted_grad = jax.jit(self._compute_grad, static_argnums=(4,))
         self._jitted_predict = jax.jit(self._predict)
 
     def init(self, query_features: _Features, cond_features: _Features,
@@ -444,12 +437,19 @@ class ConditionedModel:
         self.opt_state = self.opt.init(self.params)
 
     def _compute_loss(self, params, rng_key, query_feedback: _Feedback,
-                      cond_features: _Features) -> _Array:
-        """Compute training loss."""
+                      cond_features: _Features,
+                      repred: bool = False) -> _Array:
+        """Compute training loss.
+
+        Args:
+            repred: If True, the processor uses its own hint predictions
+                (no teacher forcing). Used during meta-eval to force the
+                model to rely on conditioning z alone.
+        """
         output_preds, hint_preds = self.net_fn.apply(
             params, rng_key,
             [query_feedback.features],  # features_list
-            False,                      # repred (training mode)
+            repred,                     # repred: False=train, True=meta-eval
             0,                          # algorithm_index
             True,                       # return_hints
             False,                      # return_all_outputs
@@ -488,26 +488,30 @@ class ConditionedModel:
 
         return total_loss
 
-    def _compute_grad(self, params, rng_key, query_feedback, cond_features):
+    def _compute_grad(self, params, rng_key, query_feedback, cond_features,
+                      repred=False):
         """Compute loss and gradients."""
         loss, grads = jax.value_and_grad(self._compute_loss)(
-            params, rng_key, query_feedback, cond_features)
+            params, rng_key, query_feedback, cond_features, repred)
         return loss, grads
 
     def feedback(self, rng_key: _Array, query_feedback: _Feedback,
-                 cond_features: _Features) -> float:
+                 cond_features: _Features,
+                 repred: bool = False) -> float:
         """One training step: compute loss, gradients, update params.
 
         Args:
             rng_key: JAX random key.
             query_feedback: Query Feedback (what to predict).
             cond_features: Conditioning Features (what to read).
+            repred: If True, use inference mode (no teacher forcing).
+                Used during meta-eval phase.
 
         Returns:
             Training loss (scalar).
         """
         loss, grads = self._jitted_grad(
-            self.params, rng_key, query_feedback, cond_features)
+            self.params, rng_key, query_feedback, cond_features, repred)
 
         updates, self.opt_state = self.opt.update(grads, self.opt_state)
         self.params = optax.apply_updates(self.params, updates)
@@ -540,37 +544,6 @@ class ConditionedModel:
         """
         return self._jitted_predict(
             self.params, rng_key, query_features, cond_features)
-
-    def _predict_with_z(self, params, rng_key, query_features, z_override):
-        """Run prediction with a raw z vector (bypassing conditioning encoder)."""
-        output_preds, hint_preds = self.net_fn.apply(
-            params, rng_key,
-            [query_features],
-            True,    # repred
-            0,       # algorithm_index
-            False,   # return_hints
-            False,   # return_all_outputs
-            None,    # cond_features (not used)
-            z_override,
-        )
-        return output_preds, hint_preds
-
-    def predict_with_z(self, rng_key: _Array, query_features: _Features,
-                       z_override: _Array):
-        """Run inference with a raw z vector (Diagnostic 3: param vector ceiling).
-
-        Args:
-            rng_key: JAX random key.
-            query_features: Query features to predict on.
-            z_override: Raw z vector to use instead of conditioning encoder.
-
-        Returns:
-            (output_preds, hint_preds) dictionaries.
-        """
-        if not hasattr(self, '_jitted_predict_z'):
-            self._jitted_predict_z = jax.jit(self._predict_with_z)
-        return self._jitted_predict_z(
-            self.params, rng_key, query_features, z_override)
 
     def save_model(self, filename: str):
         """Save model parameters."""

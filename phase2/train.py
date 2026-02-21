@@ -268,14 +268,20 @@ def train(config: TrainConfig):
             batch = pipeline.next()
 
         rng, step_key = jax.random.split(rng)
+
+        # During meta-eval: repred=True forces the model to rely on z alone
+        # (no teacher forcing). This is true meta-learning: the model must
+        # execute held-out variants from conditioning, not from ground-truth
+        # hints. Gradient flows through the conditioning encoder.
+        is_meta = (config.episodic and
+                   (step - 1) % config.episode_length >= int(
+                       config.episode_length * config.episode_train_frac))
         loss = model.feedback(step_key, batch.query,
-                              batch.conditioning.features)
+                              batch.conditioning.features,
+                              repred=is_meta)
         loss_val = float(loss)
 
         if config.wandb_enabled and wandb is not None:
-            is_meta = (config.episodic and
-                       step_in_episode >= int(
-                           config.episode_length * config.episode_train_frac))
             wandb.log({
                 'train/loss': loss_val,
                 'train/is_meta_eval': float(is_meta),
@@ -284,8 +290,7 @@ def train(config: TrainConfig):
 
         if step % max(1, config.eval_every // 5) == 0:
             elapsed = time.time() - t0
-            phase = 'meta' if (config.episodic and step_in_episode >= int(
-                config.episode_length * config.episode_train_frac)) else 'train'
+            phase = 'meta' if is_meta else 'train'
             print(f'  step {step}/{config.train_steps}: '
                   f'loss={loss_val:.2f}, variant={batch.variant_name}, '
                   f'phase={phase}, {elapsed:.0f}s')
