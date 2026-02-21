@@ -110,26 +110,46 @@ class ConditionedDataPipeline:
     def next(self, allowed_variants=None) -> ConditionedBatch:
         """Generate one conditioned batch.
 
+        With per_example_conditioning=True and mixed_variants (default):
+        each query in the batch can be a DIFFERENT variant. Each query gets
+        its own k conditioning examples from its variant. The gradient from
+        one batch includes signal from multiple variants simultaneously,
+        resolving gradient conflicts between variants that share primitives.
+
         Args:
             allowed_variants: Optional list of variant names to sample from.
                 If None, samples from all training variants.
         """
-        # Sample a variant uniformly from allowed set.
+        from phase1.sampler import _stack_feedbacks
+
         pool = allowed_variants if allowed_variants is not None else self.variant_names
-        name = pool[self.rng.randint(len(pool))]
-        sampler = self.samplers[name]
-
-        # Generate query examples (model predicts these).
-        query = sampler.next(self.batch_size)
-
-        # Generate conditioning examples (model reads these).
         k = self.rng.choice(self.k_range) if self.randomize_k else self.k
+
         if self.per_example_conditioning:
-            # Each query gets its own k conditioning examples.
-            # Total: B * k examples. The model groups them by query.
-            conditioning = sampler.next(self.batch_size * k)
+            # Mixed-variant batch: each query is independently sampled.
+            query_feedbacks = []
+            cond_feedbacks = []
+            variant_names_batch = []
+
+            for _ in range(self.batch_size):
+                name = pool[self.rng.randint(len(pool))]
+                sampler = self.samplers[name]
+                query_feedbacks.append(sampler._generate_one())
+                # k conditioning examples for THIS query, same variant.
+                for _ in range(k):
+                    cond_feedbacks.append(sampler._generate_one())
+                variant_names_batch.append(name)
+
+            query = _stack_feedbacks(query_feedbacks)
+            conditioning = _stack_feedbacks(cond_feedbacks)
+            # variant_name is a summary (most common, for logging only).
+            name = max(set(variant_names_batch),
+                       key=variant_names_batch.count)
         else:
-            # Shared: k examples for the whole batch.
+            # Single-variant batch: all queries from the same variant.
+            name = pool[self.rng.randint(len(pool))]
+            sampler = self.samplers[name]
+            query = sampler.next(self.batch_size)
             conditioning = sampler.next(k)
 
         return ConditionedBatch(
