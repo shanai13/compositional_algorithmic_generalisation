@@ -224,15 +224,31 @@ class ConditionedNet(nets.Net):
                 except Exception as e:
                     raise Exception(f'Failed to process {dp}') from e
 
-        # Z INJECTION: add task embedding to graph features.
+        # Z INJECTION: add task embedding to node, edge, and graph features.
+        # This gives the processor z-dependent per-node and per-edge behavior,
+        # not just a global bias. Critical for hard compositions where 90%+
+        # of predecessors must change (see story.md Finding 2).
+        #
+        # Previous version only injected into graph_fts, meaning z entered
+        # only through msg_g in the PGN processor — identical for all node
+        # pairs, unable to change which neighbor wins.
         if self._z is not None:
             z = self._z
             # Broadcast z (z_dim,) -> (batch_size, z_dim).
             if z.ndim == 1:
                 z = jnp.broadcast_to(z[None, :], (batch_size, z.shape[0]))
-            # Project z to hidden_dim and add to graph_fts.
-            z_proj = hk.Linear(self.hidden_dim, name='z_to_graph')(z)
-            graph_fts = graph_fts + z_proj
+
+            # Node-level: z influences sender/receiver message projections.
+            z_node = hk.Linear(self.hidden_dim, name='z_to_node')(z)
+            node_fts = node_fts + z_node[:, None, :]  # (B, N, H)
+
+            # Edge-level: z influences edge message projection.
+            z_edge = hk.Linear(self.hidden_dim, name='z_to_edge')(z)
+            edge_fts = edge_fts + z_edge[:, None, None, :]  # (B, N, N, H)
+
+            # Graph-level: z influences global message term (as before).
+            z_graph = hk.Linear(self.hidden_dim, name='z_to_graph')(z)
+            graph_fts = graph_fts + z_graph  # (B, H)
 
         # PROCESS (identical to parent).
         nxt_hidden = hidden
