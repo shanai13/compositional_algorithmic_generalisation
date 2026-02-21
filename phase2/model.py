@@ -67,16 +67,21 @@ class ConditioningEncoder(hk.Module):
         self.z_dim = z_dim
         self.nb_layers = nb_layers
 
-    def __call__(self, cond_features: _Features) -> _Array:
+    def __call__(self, cond_features: _Features,
+                 query_batch_size: int = 0) -> _Array:
         """Encode conditioning examples into task embedding z.
 
         Args:
-            cond_features: Features with batch_size=k (k conditioning examples).
-                inputs: [pos(k,n), s(k,n), A(k,n,n), adj(k,n,n)]
-                hints: [d(T,k,n), pi_h(T,k,n)]
+            cond_features: Features with batch_size=total_cond.
+                If query_batch_size > 0: total_cond = B * k (per-query
+                conditioning, each query gets its own k examples).
+                If query_batch_size == 0: total_cond = k (shared
+                conditioning, single z for whole batch).
+            query_batch_size: Number of query examples. If > 0, produces
+                per-query z vectors by grouping conditioning examples.
 
         Returns:
-            z: (z_dim,) task embedding vector.
+            z: (z_dim,) if shared, or (B, z_dim) if per-query.
         """
         # Extract raw data from DataPoints.
         inp_map = {dp.name: dp.data for dp in cond_features.inputs}
@@ -135,13 +140,20 @@ class ConditioningEncoder(hk.Module):
                 jnp.concatenate([node_fts, msg_agg], axis=-1)))
 
         # Mean pool over nodes -> per-example embedding.
-        e_j = jnp.mean(node_fts, axis=1)  # (k, hidden_dim)
+        e_j = jnp.mean(node_fts, axis=1)  # (total_cond, hidden_dim)
 
         # Project to z_dim.
-        e_j = hk.Linear(self.z_dim, name='to_z')(e_j)  # (k, z_dim)
+        e_j = hk.Linear(self.z_dim, name='to_z')(e_j)  # (total_cond, z_dim)
 
-        # Mean pool over k conditioning examples -> task embedding.
-        z = jnp.mean(e_j, axis=0)  # (z_dim,)
+        # Pool over conditioning examples.
+        if query_batch_size > 0:
+            # Per-query: group into (B, k, z_dim) then mean over k.
+            k = e_j.shape[0] // query_batch_size
+            e_j = e_j.reshape(query_batch_size, k, -1)
+            z = jnp.mean(e_j, axis=1)  # (B, z_dim)
+        else:
+            # Shared: mean over all conditioning examples.
+            z = jnp.mean(e_j, axis=0)  # (z_dim,)
 
         return z
 
@@ -176,19 +188,30 @@ class ConditionedNet(nets.Net):
             algorithm_index: Which algorithm (0 for us, -1 for init).
             return_hints: Whether to return hint predictions.
             return_all_outputs: Whether to return all timestep outputs.
-            cond_features: Optional Features for conditioning (batch_size=k).
-                If provided, computes z and injects into processing.
+            cond_features: Optional Features for conditioning.
+                batch_size = B*k for per-query conditioning, or k for shared.
 
         Returns:
             (output_preds, hint_preds) same as parent.
         """
         if cond_features is not None:
+            # Infer query batch size for per-query conditioning.
+            query_batch_size = features_list[0].inputs[0].data.shape[0]
+            cond_batch_size = cond_features.inputs[0].data.shape[0]
+
             encoder = ConditioningEncoder(
                 hidden_dim=self.cond_hidden_dim,
                 z_dim=self.z_dim,
                 nb_layers=self.cond_nb_layers,
             )
-            self._z = encoder(cond_features)
+            # Per-query if conditioning has exactly B*k examples (k>0 integer).
+            # Shared otherwise (e.g., eval with k conditioning examples).
+            if (cond_batch_size > query_batch_size and
+                    cond_batch_size % query_batch_size == 0):
+                self._z = encoder(cond_features,
+                                  query_batch_size=query_batch_size)
+            else:
+                self._z = encoder(cond_features)
         else:
             self._z = None
 

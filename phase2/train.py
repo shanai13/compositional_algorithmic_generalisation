@@ -50,7 +50,7 @@ class TrainConfig:
 
     # Model.
     hidden_dim: int = 128
-    z_dim: int = 128
+    z_dim: int = 16               # small z forces compression -> compositional encoding
     cond_hidden_dim: int = 64
     cond_nb_layers: int = 2
     processor_type: str = 'triplet_gmpnn'
@@ -72,8 +72,11 @@ class TrainConfig:
     grad_clip_max_norm: float = 1.0
     seed: int = 42
 
+    # Per-example conditioning: each query gets its own k conditioning examples.
+    per_example_conditioning: bool = True
+
     # Episodic training: hold out variants to incentivise compositional z.
-    episodic: bool = True
+    episodic: bool = False          # disabled: z bottleneck + per-example should suffice
     episode_length: int = 500        # steps per episode
     episode_train_frac: float = 0.8  # fraction for training on active variants
     episode_holdout: int = 3         # variants held out per episode
@@ -93,12 +96,12 @@ class TrainConfig:
 
 
 SMOKE_CONFIG = TrainConfig(
-    n=8, k=3, batch_size=4, hidden_dim=32, z_dim=16,
+    n=8, k=3, batch_size=4, hidden_dim=32, z_dim=8,
     cond_hidden_dim=16, cond_nb_layers=2,
     nb_triplet_fts=4, train_steps=100,
     eval_every=50, eval_samples=8, eval_batch_size=4,
-    randomize_k=True, k_range=(1, 2, 3, 5),
-    episodic=True, episode_length=30, episode_train_frac=0.8, episode_holdout=2,
+    randomize_k=False, per_example_conditioning=True,
+    episodic=False,
     wandb_enabled=False, name='smoke_test',
     checkpoint_dir='checkpoints/smoke',
 )
@@ -199,7 +202,8 @@ def train(config: TrainConfig):
         variant_names=TRAIN_VARIANTS, n=config.n, k=config.k,
         batch_size=config.batch_size, p=config.p,
         weight_range=config.weight_range, seed=config.seed,
-        randomize_k=config.randomize_k, k_range=config.k_range)
+        randomize_k=config.randomize_k, k_range=config.k_range,
+        per_example_conditioning=config.per_example_conditioning)
 
     # First batch for model init.
     dummy_batch = pipeline.next()

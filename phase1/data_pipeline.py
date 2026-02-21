@@ -78,6 +78,7 @@ class ConditionedDataPipeline:
         randomize_pos: bool = True,
         randomize_k: bool = False,
         k_range: tuple = (1, 2, 3, 5, 8),
+        per_example_conditioning: bool = False,
     ):
         if variant_names is None:
             variant_names = list(TRAIN_VARIANTS)
@@ -88,6 +89,7 @@ class ConditionedDataPipeline:
         self.batch_size = batch_size
         self.randomize_k = randomize_k
         self.k_range = k_range
+        self.per_example_conditioning = per_example_conditioning
         self.rng = np.random.RandomState(seed)
 
         # Create a sampler per variant with distinct seeds.
@@ -121,11 +123,14 @@ class ConditionedDataPipeline:
         query = sampler.next(self.batch_size)
 
         # Generate conditioning examples (model reads these).
-        # Randomize k to prevent z from acting as a precise lookup key.
-        # With k=1 the signal is noisy; with k=8 it's clean. The model
-        # must extract features robust to this variation.
         k = self.rng.choice(self.k_range) if self.randomize_k else self.k
-        conditioning = sampler.next(k)
+        if self.per_example_conditioning:
+            # Each query gets its own k conditioning examples.
+            # Total: B * k examples. The model groups them by query.
+            conditioning = sampler.next(self.batch_size * k)
+        else:
+            # Shared: k examples for the whole batch.
+            conditioning = sampler.next(k)
 
         return ConditionedBatch(
             query=query,
