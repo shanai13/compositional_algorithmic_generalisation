@@ -148,21 +148,37 @@ VIABLE_VARIANTS: List[str] = [
 # Train / test split (4-axis compositional)
 # ---------------------------------------------------------------------------
 #
-# 9 train + 3 test, all GOOD (source-dependent) variants.
-# Every primitive value in test appears in ≥2 training variants.
+# 15 train + 3 test. Training includes 9 GOOD (source-dependent) + 6 MARGINAL
+# (source-independent) variants. Test is 3 GOOD variants unchanged from v2.
 #
-# Test variants — novel 4-tuples:
+# Why include MARGINAL variants? Two reasons:
+# 1. Reciprocal diversity: the previous split only paired reciprocal with
+#    (agg=min, cmp=<). MARGINAL variants max_min_>_reciprocal and
+#    min_max_<_reciprocal add reciprocal+(min,>) and reciprocal+(max,<),
+#    so the model sees reciprocal across all agg/cmp directions.
+# 2. Source-independence is a learnable property: the model must detect from
+#    conditioning traces that some variants ignore the source node.
+#
+# Test variants — novel 4-tuples (UNCHANGED from v2):
 #   add_min_<_reciprocal:    add ✓ min ✓ < ✓ reciprocal ✓
 #   max_min_<_square:        max ✓ min ✓ < ✓ square ✓
 #   min_max_>_reciprocal:    min ✓ max ✓ > ✓ reciprocal ✓
 #
 # Primitive coverage in training:
-#   combine:          add(2) max(2) min(2) multiply(3) — all 4 covered
-#   aggregate:        min(5) max(4) — both covered
-#   compare:          <(5) >(4) — both covered
-#   weight_transform: identity(4) reciprocal(2) square(3) — all 3 covered
+#   combine:          add(2) max(5) min(5) multiply(3) — all 4 covered
+#   aggregate:        min(8) max(7) — both covered
+#   compare:          <(8) >(7) — both covered
+#   weight_transform: identity(7) reciprocal(4) square(4) — all 3 covered
+#
+# Reciprocal coverage in training:
+#   max_min_<_reciprocal   → reciprocal + (min, <)
+#   multiply_min_<_reciprocal → reciprocal + (min, <)
+#   max_min_>_reciprocal   → reciprocal + (min, >)  [NEW — MARGINAL]
+#   min_max_<_reciprocal   → reciprocal + (max, <)  [NEW — MARGINAL]
+#   → reciprocal now appears with all 4 (agg, cmp) combinations in training
 
 TRAIN_VARIANTS: List[str] = [
+    # GOOD (9 — source-dependent)
     'add_min_<',                # shortest path (identity)
     'add_min_<_square',         # shortest path (squared weights)
     'max_min_<',                # minimax path (identity)
@@ -171,7 +187,14 @@ TRAIN_VARIANTS: List[str] = [
     'min_max_>_square',         # widest path (squared)
     'multiply_max_>',           # most-reliable path (identity)
     'multiply_max_>_square',    # most-reliable path (squared)
-    'multiply_min_<_reciprocal',  # least-reliable path (reciprocal, d∈[1,~100])
+    'multiply_min_<_reciprocal',  # least-reliable path (reciprocal)
+    # MARGINAL (6 — source-independent, adds primitive diversity)
+    'max_min_>',                # global min-maxweight (identity)
+    'max_min_>_reciprocal',     # global min-maxweight (reciprocal) — reciprocal + >
+    'max_min_>_square',         # global min-maxweight (squared)
+    'min_max_<',                # global max-bottleneck (identity)
+    'min_max_<_reciprocal',     # global max-bottleneck (reciprocal) — reciprocal + max
+    'min_max_<_square',         # global max-bottleneck (squared)
 ]
 
 TEST_VARIANTS: List[str] = [
