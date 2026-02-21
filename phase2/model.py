@@ -224,31 +224,33 @@ class ConditionedNet(nets.Net):
                 except Exception as e:
                     raise Exception(f'Failed to process {dp}') from e
 
-        # Z INJECTION: add task embedding to node, edge, and graph features.
-        # This gives the processor z-dependent per-node and per-edge behavior,
-        # not just a global bias. Critical for hard compositions where 90%+
-        # of predecessors must change (see story.md Finding 2).
+        # Z INJECTION via concatenation.
         #
-        # Previous version only injected into graph_fts, meaning z entered
-        # only through msg_g in the PGN processor — identical for all node
-        # pairs, unable to change which neighbor wins.
+        # z is concatenated (not added) to node_fts and graph_fts so the
+        # processor's linear projections get dedicated weight columns for z.
+        # This allows genuinely per-node z-dependent behavior: the MLP can
+        # learn "when z says reciprocal AND this node has feature X, do Y."
+        #
+        # Addition (previous approach) mixes z into features before the
+        # processor sees them — the processor can't distinguish z from
+        # node features, limiting z to a global bias.
+        #
+        # We concatenate to node_fts (enters msg_1, msg_2 via the
+        # processor's [node_fts; hidden] concatenation) and graph_fts
+        # (enters msg_g). Edge features are left at hidden_dim to avoid
+        # a large memory increase from (B, N, N, H+z) tensors.
         if self._z is not None:
             z = self._z
-            # Broadcast z (z_dim,) -> (batch_size, z_dim).
             if z.ndim == 1:
                 z = jnp.broadcast_to(z[None, :], (batch_size, z.shape[0]))
 
-            # Node-level: z influences sender/receiver message projections.
-            z_node = hk.Linear(self.hidden_dim, name='z_to_node')(z)
-            node_fts = node_fts + z_node[:, None, :]  # (B, N, H)
+            # Concatenate z to node features: (B, N, H) -> (B, N, H + z_dim).
+            z_node = jnp.broadcast_to(
+                z[:, None, :], (batch_size, nb_nodes, z.shape[-1]))
+            node_fts = jnp.concatenate([node_fts, z_node], axis=-1)
 
-            # Edge-level: z influences edge message projection.
-            z_edge = hk.Linear(self.hidden_dim, name='z_to_edge')(z)
-            edge_fts = edge_fts + z_edge[:, None, None, :]  # (B, N, N, H)
-
-            # Graph-level: z influences global message term (as before).
-            z_graph = hk.Linear(self.hidden_dim, name='z_to_graph')(z)
-            graph_fts = graph_fts + z_graph  # (B, H)
+            # Concatenate z to graph features: (B, H) -> (B, H + z_dim).
+            graph_fts = jnp.concatenate([graph_fts, z], axis=-1)
 
         # PROCESS (identical to parent).
         nxt_hidden = hidden

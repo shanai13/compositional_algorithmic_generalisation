@@ -41,10 +41,12 @@ except ImportError:
 class TrainConfig:
     # Data.
     n: int = 16                     # graph size
-    k: int = 5                      # conditioning examples
+    k: int = 5                      # conditioning examples (eval and default train)
     batch_size: int = 32            # query batch size
     p: float = 0.3                  # ER edge probability
     weight_range: tuple = (0.1, 1.0)
+    randomize_k: bool = True        # vary k during training to prevent z memorisation
+    k_range: tuple = (1, 2, 3, 5, 8)  # k values to sample from when randomize_k=True
 
     # Model.
     hidden_dim: int = 128
@@ -89,6 +91,7 @@ SMOKE_CONFIG = TrainConfig(
     cond_hidden_dim=16, cond_nb_layers=2,
     nb_triplet_fts=4, train_steps=50,
     eval_every=25, eval_samples=8, eval_batch_size=4,
+    randomize_k=True, k_range=(1, 2, 3, 5),
     wandb_enabled=False, name='smoke_test',
     checkpoint_dir='checkpoints/smoke',
 )
@@ -188,7 +191,8 @@ def train(config: TrainConfig):
     pipeline = ConditionedDataPipeline(
         variant_names=TRAIN_VARIANTS, n=config.n, k=config.k,
         batch_size=config.batch_size, p=config.p,
-        weight_range=config.weight_range, seed=config.seed)
+        weight_range=config.weight_range, seed=config.seed,
+        randomize_k=config.randomize_k, k_range=config.k_range)
 
     # First batch for model init.
     dummy_batch = pipeline.next()
