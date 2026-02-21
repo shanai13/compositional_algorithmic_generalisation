@@ -167,7 +167,8 @@ class ConditionedNet(nets.Net):
         self._z = None  # Set before forward pass.
 
     def __call__(self, features_list, repred, algorithm_index,
-                 return_hints, return_all_outputs, cond_features=None):
+                 return_hints, return_all_outputs, cond_features=None,
+                 z_override=None):
         """Forward pass with optional conditioning.
 
         Args:
@@ -178,11 +179,16 @@ class ConditionedNet(nets.Net):
             return_all_outputs: Whether to return all timestep outputs.
             cond_features: Optional Features for conditioning (batch_size=k).
                 If provided, computes z and injects into processing.
+            z_override: Optional array to use as z directly, bypassing the
+                conditioning encoder. Used for the parameter-vector ceiling
+                diagnostic (Diagnostic 3).
 
         Returns:
             (output_preds, hint_preds) same as parent.
         """
-        if cond_features is not None:
+        if z_override is not None:
+            self._z = z_override
+        elif cond_features is not None:
             encoder = ConditioningEncoder(
                 hidden_dim=self.cond_hidden_dim,
                 z_dim=self.z_dim,
@@ -376,7 +382,8 @@ class ConditionedModel:
 
         # Build Haiku function.
         def _use_net(features_list, repred, algorithm_index,
-                     return_hints, return_all_outputs, cond_features=None):
+                     return_hints, return_all_outputs, cond_features=None,
+                     z_override=None):
             net = ConditionedNet(
                 spec=self._spec,
                 hidden_dim=hidden_dim,
@@ -396,7 +403,8 @@ class ConditionedModel:
             )
             return net(features_list, repred, algorithm_index,
                        return_hints, return_all_outputs,
-                       cond_features=cond_features)
+                       cond_features=cond_features,
+                       z_override=z_override)
 
         self.net_fn = hk.transform(_use_net)
 
@@ -532,6 +540,37 @@ class ConditionedModel:
         """
         return self._jitted_predict(
             self.params, rng_key, query_features, cond_features)
+
+    def _predict_with_z(self, params, rng_key, query_features, z_override):
+        """Run prediction with a raw z vector (bypassing conditioning encoder)."""
+        output_preds, hint_preds = self.net_fn.apply(
+            params, rng_key,
+            [query_features],
+            True,    # repred
+            0,       # algorithm_index
+            False,   # return_hints
+            False,   # return_all_outputs
+            None,    # cond_features (not used)
+            z_override,
+        )
+        return output_preds, hint_preds
+
+    def predict_with_z(self, rng_key: _Array, query_features: _Features,
+                       z_override: _Array):
+        """Run inference with a raw z vector (Diagnostic 3: param vector ceiling).
+
+        Args:
+            rng_key: JAX random key.
+            query_features: Query features to predict on.
+            z_override: Raw z vector to use instead of conditioning encoder.
+
+        Returns:
+            (output_preds, hint_preds) dictionaries.
+        """
+        if not hasattr(self, '_jitted_predict_z'):
+            self._jitted_predict_z = jax.jit(self._predict_with_z)
+        return self._jitted_predict_z(
+            self.params, rng_key, query_features, z_override)
 
     def save_model(self, filename: str):
         """Save model parameters."""
