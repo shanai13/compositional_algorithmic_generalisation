@@ -6,15 +6,17 @@ Architecture overview:
 
     Query graph
       -> Standard CLRS encoder -> (node_fts, edge_fts, graph_fts, adj_mat)
-      -> z concatenated to node_fts, edge_fts, graph_fts
+      -> z projected via separate learned Linear layers per pathway:
+           z -> proj_node(z) -> concat to node_fts
+           z -> proj_edge(z) -> concat to edge_fts
+           z -> proj_graph(z) -> concat to graph_fts
       -> CLRS processor (message passing)
       -> CLRS decoder -> (distances, predecessors)
 
-z is injected into all three feature pathways (node, edge, graph) via
-concatenation. Edge injection is critical: the PGN processor computes
-msg_e = m_e(edge_fts) as a z-independent additive term. Without z in
-edge_fts, the processor cannot make task-dependent decisions about edge
-weights — needed for the weight_transform compositional axis.
+z is injected into all three feature pathways via learned projections.
+This decouples the encoder's representational capacity (z_dim) from the
+concatenation dimensions in each pathway (d_node, d_edge, d_graph).
+Each projection learns to route the relevant aspects of z to its pathway.
 """
 
 from typing import Dict, List, Optional, Tuple
@@ -63,7 +65,7 @@ class ConditioningEncoder(hk.Module):
     Mean pool across k examples -> z.
     """
 
-    def __init__(self, hidden_dim: int = 64, z_dim: int = 4,
+    def __init__(self, hidden_dim: int = 64, z_dim: int = 16,
                  nb_layers: int = 2, name: str = 'cond_encoder'):
         super().__init__(name=name)
         self.hidden_dim = hidden_dim
@@ -166,17 +168,23 @@ class ConditioningEncoder(hk.Module):
 # ---------------------------------------------------------------------------
 
 class ConditionedNet(nets.Net):
-    """CLRS Net with task embedding z injected into graph features.
+    """CLRS Net with task embedding z injected via learned projections.
 
-    Overrides _one_step_pred to add z to graph_fts between encoding
-    and processing. All other CLRS machinery (hint loop, teacher forcing,
-    scanning) is inherited unchanged.
+    Overrides _one_step_pred to project z into node/edge/graph features
+    between encoding and processing. Each pathway gets a separate learned
+    Linear projection from z, allowing different aspects of z to reach
+    different parts of the processor.
     """
 
-    def __init__(self, *args, z_dim: int = 4, cond_hidden_dim: int = 64,
+    def __init__(self, *args, z_dim: int = 16, d_node: int = 8,
+                 d_edge: int = 8, d_graph: int = 4,
+                 cond_hidden_dim: int = 64,
                  cond_nb_layers: int = 2, **kwargs):
         super().__init__(*args, **kwargs)
         self.z_dim = z_dim
+        self.d_node = d_node
+        self.d_edge = d_edge
+        self.d_graph = d_graph
         self.cond_hidden_dim = cond_hidden_dim
         self.cond_nb_layers = cond_nb_layers
         self._z = None  # Set before forward pass.
@@ -250,36 +258,42 @@ class ConditionedNet(nets.Net):
                 except Exception as e:
                     raise Exception(f'Failed to process {dp}') from e
 
-        # Z INJECTION via concatenation.
+        # Z INJECTION via learned projections + concatenation.
         #
-        # z is concatenated (not added) to node_fts, edge_fts, and
-        # graph_fts so the processor's linear projections get dedicated
-        # weight columns for z.
+        # Each pathway gets a separate Linear projection from z, so
+        # different aspects of the task embedding reach different parts
+        # of the processor. This decouples the encoder's capacity (z_dim)
+        # from the per-pathway concatenation dimensions (d_node, d_edge,
+        # d_graph).
         #
-        # This is critical for the edge pathway: in the PGN processor,
-        # msg_e = m_e(edge_fts) is an additive term in message computation.
-        # Without z in edge_fts, the processor cannot make z-dependent
-        # decisions about how to interpret edge weights — exactly what the
-        # weight_transform axis (especially order-reversing reciprocal)
-        # requires.
+        # Edge injection is critical: the PGN processor computes
+        # msg_e = m_e(edge_fts) as an additive term. Without z in
+        # edge_fts, the processor cannot make z-dependent decisions
+        # about edge weights (needed for weight_transform axis).
         if self._z is not None:
             z = self._z
             if z.ndim == 1:
                 z = jnp.broadcast_to(z[None, :], (batch_size, z.shape[0]))
 
-            # Concatenate z to node features: (B, N, H) -> (B, N, H + z_dim).
+            # Project z for each pathway.
+            z_for_node = hk.Linear(self.d_node, name='z_proj_node')(z)
+            z_for_edge = hk.Linear(self.d_edge, name='z_proj_edge')(z)
+            z_for_graph = hk.Linear(self.d_graph, name='z_proj_graph')(z)
+
+            # Concatenate to node features: (B, N, H) -> (B, N, H + d_node).
             z_node = jnp.broadcast_to(
-                z[:, None, :], (batch_size, nb_nodes, z.shape[-1]))
+                z_for_node[:, None, :],
+                (batch_size, nb_nodes, self.d_node))
             node_fts = jnp.concatenate([node_fts, z_node], axis=-1)
 
-            # Concatenate z to edge features: (B, N, N, H) -> (B, N, N, H + z_dim).
+            # Concatenate to edge features: (B, N, N, H) -> (B, N, N, H + d_edge).
             z_edge = jnp.broadcast_to(
-                z[:, None, None, :],
-                (batch_size, nb_nodes, nb_nodes, z.shape[-1]))
+                z_for_edge[:, None, None, :],
+                (batch_size, nb_nodes, nb_nodes, self.d_edge))
             edge_fts = jnp.concatenate([edge_fts, z_edge], axis=-1)
 
-            # Concatenate z to graph features: (B, H) -> (B, H + z_dim).
-            graph_fts = jnp.concatenate([graph_fts, z], axis=-1)
+            # Concatenate to graph features: (B, H) -> (B, H + d_graph).
+            graph_fts = jnp.concatenate([graph_fts, z_for_graph], axis=-1)
 
         # PROCESS (identical to parent).
         nxt_hidden = hidden
@@ -370,7 +384,10 @@ class ConditionedModel:
         dummy_trajectory: _Feedback,
         processor_factory: processors.ProcessorFactory,
         hidden_dim: int = 128,
-        z_dim: int = 4,
+        z_dim: int = 16,
+        d_node: int = 8,
+        d_edge: int = 8,
+        d_graph: int = 4,
         cond_hidden_dim: int = 64,
         cond_nb_layers: int = 2,
         encode_hints: bool = True,
@@ -388,6 +405,9 @@ class ConditionedModel:
         self._spec = [spec]  # List of specs (one for our single "algorithm").
         self.hidden_dim = hidden_dim
         self.z_dim = z_dim
+        self.d_node = d_node
+        self.d_edge = d_edge
+        self.d_graph = d_graph
         self.encode_hints = encode_hints
         self.decode_hints = decode_hints
 
@@ -420,6 +440,9 @@ class ConditionedModel:
                 nb_dims=self._nb_dims,
                 nb_msg_passing_steps=nb_msg_passing_steps,
                 z_dim=z_dim,
+                d_node=d_node,
+                d_edge=d_edge,
+                d_graph=d_graph,
                 cond_hidden_dim=cond_hidden_dim,
                 cond_nb_layers=cond_nb_layers,
             )

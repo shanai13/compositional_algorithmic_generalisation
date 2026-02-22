@@ -50,7 +50,10 @@ class TrainConfig:
 
     # Model.
     hidden_dim: int = 128
-    z_dim: int = 4                # 4 dims for 4 compositional axes; forces factored encoding
+    z_dim: int = 16               # encoder output dim (decoupled from injection dims)
+    d_node: int = 8               # z projection dim for node pathway
+    d_edge: int = 8               # z projection dim for edge pathway
+    d_graph: int = 4              # z projection dim for graph pathway
     cond_hidden_dim: int = 64
     cond_nb_layers: int = 2
     processor_type: str = 'triplet_gmpnn'
@@ -96,7 +99,8 @@ class TrainConfig:
 
 
 SMOKE_CONFIG = TrainConfig(
-    n=8, k=3, batch_size=4, hidden_dim=32, z_dim=4,
+    n=8, k=3, batch_size=4, hidden_dim=32, z_dim=8,
+    d_node=4, d_edge=4, d_graph=2,
     cond_hidden_dim=16, cond_nb_layers=2,
     nb_triplet_fts=4, train_steps=100,
     eval_every=50, eval_samples=8, eval_batch_size=4,
@@ -189,7 +193,8 @@ def train(config: TrainConfig):
     print(f'  Variants: {len(TRAIN_VARIANTS)} train, {len(TEST_VARIANTS)} test')
     print(f'  Graph: n={config.n}, k={config.k}, batch={config.batch_size}')
     print(f'  Model: hidden={config.hidden_dim}, z={config.z_dim}, '
-          f'processor={config.processor_type}')
+          f'd_node={config.d_node}, d_edge={config.d_edge}, '
+          f'd_graph={config.d_graph}, processor={config.processor_type}')
     print(f'  Steps: {config.train_steps}, lr={config.learning_rate}')
 
     # Wandb.
@@ -217,6 +222,7 @@ def train(config: TrainConfig):
         spec=RELAXATION_SPEC, dummy_trajectory=dummy_batch.query,
         processor_factory=processor_factory,
         hidden_dim=config.hidden_dim, z_dim=config.z_dim,
+        d_node=config.d_node, d_edge=config.d_edge, d_graph=config.d_graph,
         cond_hidden_dim=config.cond_hidden_dim,
         cond_nb_layers=config.cond_nb_layers,
         encode_hints=config.encode_hints, decode_hints=config.decode_hints,
