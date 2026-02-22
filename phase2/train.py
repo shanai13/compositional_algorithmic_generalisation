@@ -71,7 +71,7 @@ class TrainConfig:
 
     # Training.
     train_steps: int = 10000
-    learning_rate: float = 0.001
+    learning_rate: float = 0.0003
     warmup_steps: int = 1000          # linear LR warmup from 0 to learning_rate
     grad_clip_max_norm: float = 1.0
     seed: int = 42
