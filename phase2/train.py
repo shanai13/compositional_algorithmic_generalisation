@@ -50,7 +50,7 @@ class TrainConfig:
 
     # Model.
     hidden_dim: int = 128
-    z_dim: int = 16               # small z forces compression -> compositional encoding
+    z_dim: int = 4                # 4 dims for 4 compositional axes; forces factored encoding
     cond_hidden_dim: int = 64
     cond_nb_layers: int = 2
     processor_type: str = 'triplet_gmpnn'
@@ -96,7 +96,7 @@ class TrainConfig:
 
 
 SMOKE_CONFIG = TrainConfig(
-    n=8, k=3, batch_size=4, hidden_dim=32, z_dim=8,
+    n=8, k=3, batch_size=4, hidden_dim=32, z_dim=4,
     cond_hidden_dim=16, cond_nb_layers=2,
     nb_triplet_fts=4, train_steps=100,
     eval_every=50, eval_samples=8, eval_batch_size=4,

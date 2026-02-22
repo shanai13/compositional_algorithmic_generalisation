@@ -6,12 +6,15 @@ Architecture overview:
 
     Query graph
       -> Standard CLRS encoder -> (node_fts, edge_fts, graph_fts, adj_mat)
-      -> graph_fts += Linear(z)   [z injection]
+      -> z concatenated to node_fts, edge_fts, graph_fts
       -> CLRS processor (message passing)
       -> CLRS decoder -> (distances, predecessors)
 
-The only architectural change from standard CLRS is z injection into graph_fts.
-Everything else (encoder, processor, decoder, loss, hint supervision) is reused.
+z is injected into all three feature pathways (node, edge, graph) via
+concatenation. Edge injection is critical: the PGN processor computes
+msg_e = m_e(edge_fts) as a z-independent additive term. Without z in
+edge_fts, the processor cannot make task-dependent decisions about edge
+weights — needed for the weight_transform compositional axis.
 """
 
 from typing import Dict, List, Optional, Tuple
@@ -60,7 +63,7 @@ class ConditioningEncoder(hk.Module):
     Mean pool across k examples -> z.
     """
 
-    def __init__(self, hidden_dim: int = 64, z_dim: int = 128,
+    def __init__(self, hidden_dim: int = 64, z_dim: int = 4,
                  nb_layers: int = 2, name: str = 'cond_encoder'):
         super().__init__(name=name)
         self.hidden_dim = hidden_dim
@@ -170,7 +173,7 @@ class ConditionedNet(nets.Net):
     scanning) is inherited unchanged.
     """
 
-    def __init__(self, *args, z_dim: int = 128, cond_hidden_dim: int = 64,
+    def __init__(self, *args, z_dim: int = 4, cond_hidden_dim: int = 64,
                  cond_nb_layers: int = 2, **kwargs):
         super().__init__(*args, **kwargs)
         self.z_dim = z_dim
@@ -249,19 +252,16 @@ class ConditionedNet(nets.Net):
 
         # Z INJECTION via concatenation.
         #
-        # z is concatenated (not added) to node_fts and graph_fts so the
-        # processor's linear projections get dedicated weight columns for z.
-        # This allows genuinely per-node z-dependent behavior: the MLP can
-        # learn "when z says reciprocal AND this node has feature X, do Y."
+        # z is concatenated (not added) to node_fts, edge_fts, and
+        # graph_fts so the processor's linear projections get dedicated
+        # weight columns for z.
         #
-        # Addition (previous approach) mixes z into features before the
-        # processor sees them — the processor can't distinguish z from
-        # node features, limiting z to a global bias.
-        #
-        # We concatenate to node_fts (enters msg_1, msg_2 via the
-        # processor's [node_fts; hidden] concatenation) and graph_fts
-        # (enters msg_g). Edge features are left at hidden_dim to avoid
-        # a large memory increase from (B, N, N, H+z) tensors.
+        # This is critical for the edge pathway: in the PGN processor,
+        # msg_e = m_e(edge_fts) is an additive term in message computation.
+        # Without z in edge_fts, the processor cannot make z-dependent
+        # decisions about how to interpret edge weights — exactly what the
+        # weight_transform axis (especially order-reversing reciprocal)
+        # requires.
         if self._z is not None:
             z = self._z
             if z.ndim == 1:
@@ -271,6 +271,12 @@ class ConditionedNet(nets.Net):
             z_node = jnp.broadcast_to(
                 z[:, None, :], (batch_size, nb_nodes, z.shape[-1]))
             node_fts = jnp.concatenate([node_fts, z_node], axis=-1)
+
+            # Concatenate z to edge features: (B, N, N, H) -> (B, N, N, H + z_dim).
+            z_edge = jnp.broadcast_to(
+                z[:, None, None, :],
+                (batch_size, nb_nodes, nb_nodes, z.shape[-1]))
+            edge_fts = jnp.concatenate([edge_fts, z_edge], axis=-1)
 
             # Concatenate z to graph features: (B, H) -> (B, H + z_dim).
             graph_fts = jnp.concatenate([graph_fts, z], axis=-1)
@@ -364,7 +370,7 @@ class ConditionedModel:
         dummy_trajectory: _Feedback,
         processor_factory: processors.ProcessorFactory,
         hidden_dim: int = 128,
-        z_dim: int = 128,
+        z_dim: int = 4,
         cond_hidden_dim: int = 64,
         cond_nb_layers: int = 2,
         encode_hints: bool = True,
