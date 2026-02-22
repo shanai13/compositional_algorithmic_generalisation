@@ -49,7 +49,7 @@ class TrainConfig:
     k_range: tuple = (1, 2, 3, 5, 8)  # k values to sample from when randomize_k=True
 
     # Model.
-    hidden_dim: int = 128
+    hidden_dim: int = 256
     z_dim: int = 32               # encoder output dim (decoupled from injection dims)
     d_node: int = 16              # z projection dim for node pathway
     d_edge: int = 16              # z projection dim for edge pathway
