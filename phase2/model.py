@@ -103,9 +103,15 @@ class ConditioningEncoder(hk.Module):
         n = s.shape[1]
 
         # Build node features: [s, d_init, d_final, d_delta] -> (k, n, 4)
-        d_init = d_hints[0]       # (k, n)
-        d_final = d_hints[-1]     # (k, n)
-        d_delta = d_final - d_init  # (k, n)
+        # Normalize d values by INF_PROXY so they're O(1), matching the
+        # scale of s (0 or 1). Without this, d values at ±200 produce
+        # activations ~200x larger than s through the Xavier-init Linear,
+        # dominating the representation. This normalization is local to
+        # the conditioning encoder — the main processor and hint loss
+        # operate on raw d values.
+        d_init = d_hints[0] / INF_PROXY       # (k, n)
+        d_final = d_hints[-1] / INF_PROXY     # (k, n)
+        d_delta = d_final - d_init             # (k, n)
         node_fts = jnp.stack([s, d_init, d_final, d_delta], axis=-1)
 
         # Build predecessor edge indicator from final predecessors.
@@ -356,9 +362,7 @@ def _masked_d_hint_loss(truth, preds, lengths):
     loss = (pred_stack - truth_data) ** 2  # (T, B, n)
 
     # Mask: 1 for reachable nodes (|d| below threshold), 0 for unreachable.
-    # d values are normalized by INF_PROXY in the sampler, so unreachable
-    # nodes are at ±1.0. Threshold at 0.95 to exclude them.
-    threshold = 0.95
+    threshold = INF_PROXY * 0.95
     reachable = (jnp.abs(truth_data) < threshold).astype(jnp.float32)
 
     # Timestep activity mask (from CLRS lengths convention).
