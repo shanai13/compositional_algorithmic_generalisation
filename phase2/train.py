@@ -54,7 +54,7 @@ class TrainConfig:
     d_node: int = 16              # z projection dim for node pathway
     d_edge: int = 16              # z projection dim for edge pathway
     d_graph: int = 8              # z projection dim for graph pathway
-    cond_hidden_dim: int = 64
+    cond_hidden_dim: int = 128
     cond_nb_layers: int = 2
     processor_type: str = 'triplet_gmpnn'
     use_ln: bool = True
