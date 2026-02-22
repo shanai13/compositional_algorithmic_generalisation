@@ -31,11 +31,23 @@ Features = samplers.Features
 
 
 def _clip_inf(arr: np.ndarray) -> np.ndarray:
-    """Replace inf/-inf with finite proxy values."""
+    """Replace inf/-inf and normalize to [-1, 1].
+
+    Clips inf/-inf to ±INF_PROXY, then divides by INF_PROXY so all
+    values are in [-1, 1]. This is critical for training stability:
+    the CLRS encoder applies a learned Linear to scalar hints, and
+    Xavier initialization assumes inputs ~O(1). Without normalization,
+    raw ±200 values produce activations ~100x larger than other inputs,
+    dominating the loss and causing gradient spikes.
+
+    Also fixes cross-variant scale mismatch: add variants produce
+    d ∈ [0, ~15], multiply variants d ∈ [0, 1]. After normalization
+    both are O(0.01-0.1), giving the MSE hint loss consistent scale.
+    """
     out = arr.copy()
     out[out == np.inf] = INF_PROXY
     out[out == -np.inf] = -INF_PROXY
-    return out
+    return out / INF_PROXY
 
 
 def trace_to_feedback(

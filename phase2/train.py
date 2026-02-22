@@ -50,10 +50,10 @@ class TrainConfig:
 
     # Model.
     hidden_dim: int = 128
-    z_dim: int = 16               # encoder output dim (decoupled from injection dims)
-    d_node: int = 8               # z projection dim for node pathway
-    d_edge: int = 8               # z projection dim for edge pathway
-    d_graph: int = 4              # z projection dim for graph pathway
+    z_dim: int = 32               # encoder output dim (decoupled from injection dims)
+    d_node: int = 16              # z projection dim for node pathway
+    d_edge: int = 16              # z projection dim for edge pathway
+    d_graph: int = 8              # z projection dim for graph pathway
     cond_hidden_dim: int = 64
     cond_nb_layers: int = 2
     processor_type: str = 'triplet_gmpnn'
@@ -72,6 +72,7 @@ class TrainConfig:
     # Training.
     train_steps: int = 10000
     learning_rate: float = 0.001
+    warmup_steps: int = 1000          # linear LR warmup from 0 to learning_rate
     grad_clip_max_norm: float = 1.0
     seed: int = 42
 
@@ -99,10 +100,10 @@ class TrainConfig:
 
 
 SMOKE_CONFIG = TrainConfig(
-    n=8, k=3, batch_size=4, hidden_dim=32, z_dim=8,
-    d_node=4, d_edge=4, d_graph=2,
+    n=8, k=3, batch_size=4, hidden_dim=32, z_dim=16,
+    d_node=8, d_edge=8, d_graph=4,
     cond_hidden_dim=16, cond_nb_layers=2,
-    nb_triplet_fts=4, train_steps=100,
+    nb_triplet_fts=4, train_steps=100, warmup_steps=10,
     eval_every=50, eval_samples=8, eval_batch_size=4,
     randomize_k=False, per_example_conditioning=True,
     episodic=False,
@@ -228,6 +229,7 @@ def train(config: TrainConfig):
         encode_hints=config.encode_hints, decode_hints=config.decode_hints,
         encoder_init=config.encoder_init, use_lstm=config.use_lstm,
         learning_rate=config.learning_rate,
+        warmup_steps=config.warmup_steps,
         grad_clip_max_norm=config.grad_clip_max_norm,
         dropout_prob=config.dropout_prob,
         hint_teacher_forcing=config.hint_teacher_forcing,

@@ -65,7 +65,7 @@ class ConditioningEncoder(hk.Module):
     Mean pool across k examples -> z.
     """
 
-    def __init__(self, hidden_dim: int = 64, z_dim: int = 16,
+    def __init__(self, hidden_dim: int = 64, z_dim: int = 32,
                  nb_layers: int = 2, name: str = 'cond_encoder'):
         super().__init__(name=name)
         self.hidden_dim = hidden_dim
@@ -176,8 +176,8 @@ class ConditionedNet(nets.Net):
     different parts of the processor.
     """
 
-    def __init__(self, *args, z_dim: int = 16, d_node: int = 8,
-                 d_edge: int = 8, d_graph: int = 4,
+    def __init__(self, *args, z_dim: int = 32, d_node: int = 16,
+                 d_edge: int = 16, d_graph: int = 8,
                  cond_hidden_dim: int = 64,
                  cond_nb_layers: int = 2, **kwargs):
         super().__init__(*args, **kwargs)
@@ -356,7 +356,9 @@ def _masked_d_hint_loss(truth, preds, lengths):
     loss = (pred_stack - truth_data) ** 2  # (T, B, n)
 
     # Mask: 1 for reachable nodes (|d| below threshold), 0 for unreachable.
-    threshold = INF_PROXY * 0.95
+    # d values are normalized by INF_PROXY in the sampler, so unreachable
+    # nodes are at ±1.0. Threshold at 0.95 to exclude them.
+    threshold = 0.95
     reachable = (jnp.abs(truth_data) < threshold).astype(jnp.float32)
 
     # Timestep activity mask (from CLRS lengths convention).
@@ -384,10 +386,10 @@ class ConditionedModel:
         dummy_trajectory: _Feedback,
         processor_factory: processors.ProcessorFactory,
         hidden_dim: int = 128,
-        z_dim: int = 16,
-        d_node: int = 8,
-        d_edge: int = 8,
-        d_graph: int = 4,
+        z_dim: int = 32,
+        d_node: int = 16,
+        d_edge: int = 16,
+        d_graph: int = 8,
         cond_hidden_dim: int = 64,
         cond_nb_layers: int = 2,
         encode_hints: bool = True,
@@ -395,6 +397,7 @@ class ConditionedModel:
         encoder_init: str = 'xavier_on_scalars',
         use_lstm: bool = False,
         learning_rate: float = 0.001,
+        warmup_steps: int = 0,
         grad_clip_max_norm: float = 1.0,
         dropout_prob: float = 0.0,
         hint_teacher_forcing: float = 0.0,
@@ -452,10 +455,22 @@ class ConditionedModel:
 
         self.net_fn = hk.transform(_use_net)
 
-        # Optimizer.
+        # Optimizer with optional LR warmup.
+        if warmup_steps > 0:
+            lr_schedule = optax.join_schedules(
+                schedules=[
+                    optax.linear_schedule(
+                        init_value=0.0, end_value=learning_rate,
+                        transition_steps=warmup_steps),
+                    optax.constant_schedule(learning_rate),
+                ],
+                boundaries=[warmup_steps],
+            )
+        else:
+            lr_schedule = learning_rate
         self.opt = optax.chain(
             optax.clip_by_global_norm(grad_clip_max_norm),
-            optax.adam(learning_rate),
+            optax.adam(lr_schedule),
         )
 
         self.params = None
