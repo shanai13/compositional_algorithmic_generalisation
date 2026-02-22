@@ -289,25 +289,24 @@ class ConditionedNet(nets.Net):
             if z.ndim == 1:
                 z = jnp.broadcast_to(z[None, :], (batch_size, z.shape[0]))
 
-            # Project z for each pathway.
-            z_for_node = hk.Linear(self.d_node, name='z_proj_node')(z)
-            z_for_edge = hk.Linear(self.d_edge, name='z_proj_edge')(z)
-            z_for_graph = hk.Linear(self.d_graph, name='z_proj_graph')(z)
+            # Project z for each pathway (skip if d=0 for ablation).
+            if self.d_node > 0:
+                z_for_node = hk.Linear(self.d_node, name='z_proj_node')(z)
+                z_node = jnp.broadcast_to(
+                    z_for_node[:, None, :],
+                    (batch_size, nb_nodes, self.d_node))
+                node_fts = jnp.concatenate([node_fts, z_node], axis=-1)
 
-            # Concatenate to node features: (B, N, H) -> (B, N, H + d_node).
-            z_node = jnp.broadcast_to(
-                z_for_node[:, None, :],
-                (batch_size, nb_nodes, self.d_node))
-            node_fts = jnp.concatenate([node_fts, z_node], axis=-1)
+            if self.d_edge > 0:
+                z_for_edge = hk.Linear(self.d_edge, name='z_proj_edge')(z)
+                z_edge = jnp.broadcast_to(
+                    z_for_edge[:, None, None, :],
+                    (batch_size, nb_nodes, nb_nodes, self.d_edge))
+                edge_fts = jnp.concatenate([edge_fts, z_edge], axis=-1)
 
-            # Concatenate to edge features: (B, N, N, H) -> (B, N, N, H + d_edge).
-            z_edge = jnp.broadcast_to(
-                z_for_edge[:, None, None, :],
-                (batch_size, nb_nodes, nb_nodes, self.d_edge))
-            edge_fts = jnp.concatenate([edge_fts, z_edge], axis=-1)
-
-            # Concatenate to graph features: (B, H) -> (B, H + d_graph).
-            graph_fts = jnp.concatenate([graph_fts, z_for_graph], axis=-1)
+            if self.d_graph > 0:
+                z_for_graph = hk.Linear(self.d_graph, name='z_proj_graph')(z)
+                graph_fts = jnp.concatenate([graph_fts, z_for_graph], axis=-1)
 
         # PROCESS (identical to parent).
         nxt_hidden = hidden
