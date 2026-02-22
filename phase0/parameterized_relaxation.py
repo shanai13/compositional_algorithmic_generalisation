@@ -74,6 +74,7 @@ WEIGHT_TRANSFORMS = {
     'identity': lambda w: w,
     'reciprocal': lambda w: 1.0 / np.maximum(w, 1e-8),  # 1/w
     'square': lambda w: w * w,                            # w^2
+    'one_minus': lambda w: 1.0 - w,                       # 1-w
 }
 
 

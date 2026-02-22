@@ -59,7 +59,7 @@ COMPARE_INIT_OTHER = {
     '>': '-inf',       # Any real value is > -inf (maximisation)
 }
 
-WEIGHT_TRANSFORM_OPTIONS = ['identity', 'reciprocal', 'square']
+WEIGHT_TRANSFORM_OPTIONS = ['identity', 'reciprocal', 'square', 'one_minus']
 
 
 def make_variant(combine: str, aggregate: str, compare: str,
@@ -77,7 +77,7 @@ def make_variant(combine: str, aggregate: str, compare: str,
 
 # ---------------------------------------------------------------------------
 # All variants: {add, min, max, multiply} x {min, max} x {<, >}
-#               x {identity, reciprocal, square}
+#               x {identity, reciprocal, square, one_minus}
 # ---------------------------------------------------------------------------
 
 BASE_VARIANTS: Dict[str, VariantParams] = {}
@@ -116,91 +116,108 @@ def get_all_variants() -> Dict[str, VariantParams]:
 # Viable variants (after Phase 0 curation with weight transforms)
 # ---------------------------------------------------------------------------
 #
-# Curation on 48 candidates ({add,min,max,multiply} x {min,max} x {<,>}
-# x {identity,reciprocal,square}):
-#   17 GOOD, 6 MARGINAL, 25 DEGENERATE from initial curation.
+# Curation on 64 candidates ({add,min,max,multiply} x {min,max} x {<,>}
+# x {identity,reciprocal,square,one_minus}):
+#   22 GOOD, 8 MARGINAL, 34 DEGENERATE from automated curation.
 #
-# Additional filtering (post-curation):
-#   Dropped multiply_min_< (identity, square) — float32 underflow
-#   Dropped multiply_max_>_reciprocal — value explosion
-#   Dropped add_max_> (identity, reciprocal, square) — longest path via
-#     iterative relaxation does NOT converge on cyclic graphs. Values grow
-#     each iteration (cycles allow revisiting edges). First training run
-#     confirmed: add_max_>_reciprocal reached only 20.2% accuracy while
-#     other reciprocal variants hit 90%+, polluting the reciprocal signal
-#     for test-time composition. converged_at=-1 in curation.
+# Post-curation filtering:
+#   Dropped add_max_> (all 4 transforms) — longest path via iterative
+#     relaxation does NOT converge on cyclic graphs. Values grow each
+#     iteration. converged_at=-1 in curation.
+#   Dropped multiply_max_>_reciprocal — value explosion (products of 1/w
+#     grow exponentially).
+#   Dropped multiply_min_< (identity) — convergence detection issue
+#     (products shrink below float64 exact-equality threshold). Recoverable
+#     with approximate convergence, but low priority.
+#   Dropped multiply_min_<_one_minus — borderline: low diversity (17.6%
+#     unique d), 90% source-dependent (not 100%). Skip for cleanliness.
+#   Dropped multiply_min_<_square — reclassified DEGENERATE in 64-variant
+#     curation (unique_fraction=12.6%, LOW_DIVERSITY).
 #
-# Final: 12 GOOD + 6 MARGINAL = 18 viable.
+# Final: 16 GOOD + 8 MARGINAL = 24 viable.
 
 VIABLE_VARIANTS: List[str] = [
-    # GOOD (12)
-    'add_min_<', 'add_min_<_reciprocal', 'add_min_<_square',
-    'max_min_<', 'max_min_<_reciprocal', 'max_min_<_square',
-    'min_max_>', 'min_max_>_reciprocal', 'min_max_>_square',
-    'multiply_max_>', 'multiply_max_>_square',
+    # GOOD (16)
+    'add_min_<', 'add_min_<_one_minus', 'add_min_<_reciprocal', 'add_min_<_square',
+    'max_min_<', 'max_min_<_one_minus', 'max_min_<_reciprocal', 'max_min_<_square',
+    'min_max_>', 'min_max_>_one_minus', 'min_max_>_reciprocal', 'min_max_>_square',
+    'multiply_max_>', 'multiply_max_>_one_minus', 'multiply_max_>_square',
     'multiply_min_<_reciprocal',
-    # MARGINAL (6 — source-independent)
-    'max_min_>', 'max_min_>_reciprocal', 'max_min_>_square',
-    'min_max_<', 'min_max_<_reciprocal', 'min_max_<_square',
+    # MARGINAL (8 — source-independent)
+    'max_min_>', 'max_min_>_one_minus', 'max_min_>_reciprocal', 'max_min_>_square',
+    'min_max_<', 'min_max_<_one_minus', 'min_max_<_reciprocal', 'min_max_<_square',
 ]
 
 # ---------------------------------------------------------------------------
 # Train / test split (4-axis compositional)
 # ---------------------------------------------------------------------------
 #
-# 15 train + 3 test. Training includes 9 GOOD (source-dependent) + 6 MARGINAL
-# (source-independent) variants. Test is 3 GOOD variants unchanged from v2.
+# 21 train + 3 test. Training includes 13 GOOD + 8 MARGINAL.
+# Test variants unchanged from previous runs for continuity.
 #
-# Why include MARGINAL variants? Two reasons:
-# 1. Reciprocal diversity: the previous split only paired reciprocal with
-#    (agg=min, cmp=<). MARGINAL variants max_min_>_reciprocal and
-#    min_max_<_reciprocal add reciprocal+(min,>) and reciprocal+(max,<),
-#    so the model sees reciprocal across all agg/cmp directions.
-# 2. Source-independence is a learnable property: the model must detect from
-#    conditioning traces that some variants ignore the source node.
+# The key addition: one_minus (w→1-w) is a second order-reversing transform
+# alongside reciprocal (w→1/w). It appears in GOOD training variants with
+# BOTH minimisation AND maximisation directions:
+#   - add_min_<_one_minus:      order-reversing + (min, <)
+#   - max_min_<_one_minus:      order-reversing + (min, <)
+#   - min_max_>_one_minus:      order-reversing + (max, >) ← KEY
+#   - multiply_max_>_one_minus: order-reversing + (max, >) ← KEY
 #
-# Test variants — novel 4-tuples (UNCHANGED from v2):
-#   add_min_<_reciprocal:    add ✓ min ✓ < ✓ reciprocal ✓
-#   max_min_<_square:        max ✓ min ✓ < ✓ square ✓
-#   min_max_>_reciprocal:    min ✓ max ✓ > ✓ reciprocal ✓
+# This directly addresses the entanglement from Finding 7: the model now
+# sees order-reversal with (max, >) in GOOD training variants (via one_minus),
+# breaking the previous correlation where order-reversal only appeared with
+# (min, <) in GOOD variants. The test asks whether the model can transfer
+# this knowledge to reciprocal (a different order-reversing transform) in
+# the (max, >) context.
 #
-# Primitive coverage in training:
-#   combine:          add(2) max(5) min(5) multiply(3) — all 4 covered
-#   aggregate:        min(8) max(7) — both covered
-#   compare:          <(8) >(7) — both covered
-#   weight_transform: identity(7) reciprocal(4) square(4) — all 3 covered
+# Test variants — novel 4-tuples:
+#   add_min_<_reciprocal:    all primitives seen individually
+#   max_min_<_square:        all primitives seen individually
+#   min_max_>_reciprocal:    all primitives seen individually; the hard case
+#                            — requires composing reciprocal with (max, >)
 #
-# Reciprocal coverage in training:
-#   max_min_<_reciprocal   → reciprocal + (min, <)
-#   multiply_min_<_reciprocal → reciprocal + (min, <)
-#   max_min_>_reciprocal   → reciprocal + (min, >)  [NEW — MARGINAL]
-#   min_max_<_reciprocal   → reciprocal + (max, <)  [NEW — MARGINAL]
-#   → reciprocal now appears with all 4 (agg, cmp) combinations in training
+# Primitive coverage in training (21 variants):
+#   combine:          add(3) max(7) min(7) multiply(4) — all 4 covered
+#   aggregate:        min(11) max(10) — both covered
+#   compare:          <(11) >(10) — both covered
+#   weight_transform: identity(6) reciprocal(4) square(4) one_minus(7)
+#
+# Order-reversing coverage in GOOD training:
+#   reciprocal + (min, <): max_min_<_reciprocal, multiply_min_<_reciprocal
+#   one_minus  + (min, <): add_min_<_one_minus, max_min_<_one_minus
+#   one_minus  + (max, >): min_max_>_one_minus, multiply_max_>_one_minus
+#   reciprocal + (max, >): NONE — this is the held-out test combination
 
 TRAIN_VARIANTS: List[str] = [
-    # GOOD (9 — source-dependent)
-    'add_min_<',                # shortest path (identity)
-    'add_min_<_square',         # shortest path (squared weights)
-    'max_min_<',                # minimax path (identity)
-    'max_min_<_reciprocal',     # minimax path (reciprocal)
-    'min_max_>',                # widest path (identity)
-    'min_max_>_square',         # widest path (squared)
-    'multiply_max_>',           # most-reliable path (identity)
-    'multiply_max_>_square',    # most-reliable path (squared)
+    # GOOD (13 — source-dependent)
+    'add_min_<',                  # shortest path (identity)
+    'add_min_<_square',           # shortest path (squared weights)
+    'add_min_<_one_minus',        # shortest path (complement weights)
+    'max_min_<',                  # minimax path (identity)
+    'max_min_<_reciprocal',       # minimax path (reciprocal)
+    'max_min_<_one_minus',        # minimax path (complement)
+    'min_max_>',                  # widest path (identity)
+    'min_max_>_square',           # widest path (squared)
+    'min_max_>_one_minus',        # widest path (complement) — order-reversing + (max,>)
+    'multiply_max_>',             # most-reliable path (identity)
+    'multiply_max_>_square',      # most-reliable path (squared)
+    'multiply_max_>_one_minus',   # most-reliable path (complement) — order-reversing + (max,>)
     'multiply_min_<_reciprocal',  # least-reliable path (reciprocal)
-    # MARGINAL (6 — source-independent, adds primitive diversity)
-    'max_min_>',                # global min-maxweight (identity)
-    'max_min_>_reciprocal',     # global min-maxweight (reciprocal) — reciprocal + >
-    'max_min_>_square',         # global min-maxweight (squared)
-    'min_max_<',                # global max-bottleneck (identity)
-    'min_max_<_reciprocal',     # global max-bottleneck (reciprocal) — reciprocal + max
-    'min_max_<_square',         # global max-bottleneck (squared)
+    # MARGINAL (8 — source-independent, adds primitive diversity)
+    'max_min_>',                  # global min-maxweight (identity)
+    'max_min_>_reciprocal',       # global min-maxweight (reciprocal)
+    'max_min_>_square',           # global min-maxweight (squared)
+    'max_min_>_one_minus',        # global min-maxweight (complement)
+    'min_max_<',                  # global max-bottleneck (identity)
+    'min_max_<_reciprocal',       # global max-bottleneck (reciprocal)
+    'min_max_<_square',           # global max-bottleneck (squared)
+    'min_max_<_one_minus',        # global max-bottleneck (complement)
 ]
 
 TEST_VARIANTS: List[str] = [
-    'add_min_<_reciprocal',     # novel: add+min+<+reciprocal
-    'max_min_<_square',         # novel: max+min+<+square
-    'min_max_>_reciprocal',     # novel: min+max+>+reciprocal
+    'add_min_<_reciprocal',       # novel: add+min+<+reciprocal
+    'max_min_<_square',           # novel: max+min+<+square
+    'min_max_>_reciprocal',       # novel: min+max+>+reciprocal (the hard case)
 ]
 
 

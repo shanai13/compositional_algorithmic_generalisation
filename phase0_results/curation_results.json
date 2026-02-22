@@ -2,13 +2,29 @@
   "add_max_<": {
     "name": "add_max_<",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.025,
-    "avg_unique_fraction": 0.11875,
+    "avg_update_fraction": 0.008333333333333333,
+    "avg_unique_fraction": 0.07708333333333334,
     "source_dependent_rate": 1.0,
-    "all_same_rate": 0.8,
+    "all_same_rate": 0.92,
     "issues": [
       "NO_UPDATES",
-      "LOW_DIVERSITY"
+      "LOW_DIVERSITY",
+      "UNIFORM_OUTPUT"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "add_max_<_one_minus": {
+    "name": "add_max_<_one_minus",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.008333333333333333,
+    "avg_unique_fraction": 0.07708333333333334,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.92,
+    "issues": [
+      "NO_UPDATES",
+      "LOW_DIVERSITY",
+      "UNIFORM_OUTPUT"
     ],
     "quality": "DEGENERATE",
     "viable": false
@@ -16,13 +32,14 @@
   "add_max_<_reciprocal": {
     "name": "add_max_<_reciprocal",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.025,
-    "avg_unique_fraction": 0.11875,
+    "avg_update_fraction": 0.008333333333333333,
+    "avg_unique_fraction": 0.07708333333333334,
     "source_dependent_rate": 1.0,
-    "all_same_rate": 0.8,
+    "all_same_rate": 0.92,
     "issues": [
       "NO_UPDATES",
-      "LOW_DIVERSITY"
+      "LOW_DIVERSITY",
+      "UNIFORM_OUTPUT"
     ],
     "quality": "DEGENERATE",
     "viable": false
@@ -30,19 +47,31 @@
   "add_max_<_square": {
     "name": "add_max_<_square",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.025,
-    "avg_unique_fraction": 0.11875,
+    "avg_update_fraction": 0.008333333333333333,
+    "avg_unique_fraction": 0.07708333333333334,
     "source_dependent_rate": 1.0,
-    "all_same_rate": 0.8,
+    "all_same_rate": 0.92,
     "issues": [
       "NO_UPDATES",
-      "LOW_DIVERSITY"
+      "LOW_DIVERSITY",
+      "UNIFORM_OUTPUT"
     ],
     "quality": "DEGENERATE",
     "viable": false
   },
   "add_max_>": {
     "name": "add_max_>",
+    "convergence_rate": 0.0,
+    "avg_update_fraction": 1.0,
+    "avg_unique_fraction": 1.0,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.0,
+    "issues": [],
+    "quality": "GOOD",
+    "viable": true
+  },
+  "add_max_>_one_minus": {
+    "name": "add_max_>_one_minus",
     "convergence_rate": 0.0,
     "avg_update_fraction": 1.0,
     "avg_unique_fraction": 1.0,
@@ -77,7 +106,18 @@
   "add_min_<": {
     "name": "add_min_<",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.90625,
+    "avg_update_fraction": 0.93125,
+    "avg_unique_fraction": 1.0,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.0,
+    "issues": [],
+    "quality": "GOOD",
+    "viable": true
+  },
+  "add_min_<_one_minus": {
+    "name": "add_min_<_one_minus",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.93125,
     "avg_unique_fraction": 1.0,
     "source_dependent_rate": 1.0,
     "all_same_rate": 0.0,
@@ -88,7 +128,7 @@
   "add_min_<_reciprocal": {
     "name": "add_min_<_reciprocal",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.90625,
+    "avg_update_fraction": 0.93125,
     "avg_unique_fraction": 1.0,
     "source_dependent_rate": 1.0,
     "all_same_rate": 0.0,
@@ -99,7 +139,7 @@
   "add_min_<_square": {
     "name": "add_min_<_square",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.90625,
+    "avg_update_fraction": 0.93125,
     "avg_unique_fraction": 1.0,
     "source_dependent_rate": 1.0,
     "all_same_rate": 0.0,
@@ -110,13 +150,29 @@
   "add_min_>": {
     "name": "add_min_>",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.025,
-    "avg_unique_fraction": 0.11875,
+    "avg_update_fraction": 0.008333333333333333,
+    "avg_unique_fraction": 0.07708333333333334,
     "source_dependent_rate": 1.0,
-    "all_same_rate": 0.8,
+    "all_same_rate": 0.92,
     "issues": [
       "NO_UPDATES",
-      "LOW_DIVERSITY"
+      "LOW_DIVERSITY",
+      "UNIFORM_OUTPUT"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "add_min_>_one_minus": {
+    "name": "add_min_>_one_minus",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.008333333333333333,
+    "avg_unique_fraction": 0.07708333333333334,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.92,
+    "issues": [
+      "NO_UPDATES",
+      "LOW_DIVERSITY",
+      "UNIFORM_OUTPUT"
     ],
     "quality": "DEGENERATE",
     "viable": false
@@ -124,13 +180,14 @@
   "add_min_>_reciprocal": {
     "name": "add_min_>_reciprocal",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.025,
-    "avg_unique_fraction": 0.11875,
+    "avg_update_fraction": 0.008333333333333333,
+    "avg_unique_fraction": 0.07708333333333334,
     "source_dependent_rate": 1.0,
-    "all_same_rate": 0.8,
+    "all_same_rate": 0.92,
     "issues": [
       "NO_UPDATES",
-      "LOW_DIVERSITY"
+      "LOW_DIVERSITY",
+      "UNIFORM_OUTPUT"
     ],
     "quality": "DEGENERATE",
     "viable": false
@@ -138,13 +195,14 @@
   "add_min_>_square": {
     "name": "add_min_>_square",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.025,
-    "avg_unique_fraction": 0.11875,
+    "avg_update_fraction": 0.008333333333333333,
+    "avg_unique_fraction": 0.07708333333333334,
     "source_dependent_rate": 1.0,
-    "all_same_rate": 0.8,
+    "all_same_rate": 0.92,
     "issues": [
       "NO_UPDATES",
-      "LOW_DIVERSITY"
+      "LOW_DIVERSITY",
+      "UNIFORM_OUTPUT"
     ],
     "quality": "DEGENERATE",
     "viable": false
@@ -152,8 +210,23 @@
   "max_max_<": {
     "name": "max_max_<",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.025,
-    "avg_unique_fraction": 0.025,
+    "avg_update_fraction": 0.008333333333333333,
+    "avg_unique_fraction": 0.008333333333333333,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 1.0,
+    "issues": [
+      "NO_UPDATES",
+      "LOW_DIVERSITY",
+      "UNIFORM_OUTPUT"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "max_max_<_one_minus": {
+    "name": "max_max_<_one_minus",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.008333333333333333,
+    "avg_unique_fraction": 0.008333333333333333,
     "source_dependent_rate": 1.0,
     "all_same_rate": 1.0,
     "issues": [
@@ -167,8 +240,8 @@
   "max_max_<_reciprocal": {
     "name": "max_max_<_reciprocal",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.025,
-    "avg_unique_fraction": 0.025,
+    "avg_update_fraction": 0.008333333333333333,
+    "avg_unique_fraction": 0.008333333333333333,
     "source_dependent_rate": 1.0,
     "all_same_rate": 1.0,
     "issues": [
@@ -182,8 +255,8 @@
   "max_max_<_square": {
     "name": "max_max_<_square",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.025,
-    "avg_unique_fraction": 0.025,
+    "avg_update_fraction": 0.008333333333333333,
+    "avg_unique_fraction": 0.008333333333333333,
     "source_dependent_rate": 1.0,
     "all_same_rate": 1.0,
     "issues": [
@@ -198,7 +271,22 @@
     "name": "max_max_>",
     "convergence_rate": 1.0,
     "avg_update_fraction": 1.0,
-    "avg_unique_fraction": 0.09375,
+    "avg_unique_fraction": 0.06875,
+    "source_dependent_rate": 0.0,
+    "all_same_rate": 1.0,
+    "issues": [
+      "LOW_DIVERSITY",
+      "SOURCE_INDEPENDENT",
+      "UNIFORM_OUTPUT"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "max_max_>_one_minus": {
+    "name": "max_max_>_one_minus",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 1.0,
+    "avg_unique_fraction": 0.06875,
     "source_dependent_rate": 0.0,
     "all_same_rate": 1.0,
     "issues": [
@@ -213,7 +301,7 @@
     "name": "max_max_>_reciprocal",
     "convergence_rate": 1.0,
     "avg_update_fraction": 1.0,
-    "avg_unique_fraction": 0.09375,
+    "avg_unique_fraction": 0.06875,
     "source_dependent_rate": 0.0,
     "all_same_rate": 1.0,
     "issues": [
@@ -228,7 +316,7 @@
     "name": "max_max_>_square",
     "convergence_rate": 1.0,
     "avg_update_fraction": 1.0,
-    "avg_unique_fraction": 0.09375,
+    "avg_unique_fraction": 0.06875,
     "source_dependent_rate": 0.0,
     "all_same_rate": 1.0,
     "issues": [
@@ -242,10 +330,21 @@
   "max_min_<": {
     "name": "max_min_<",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.90625,
-    "avg_unique_fraction": 0.3625,
+    "avg_update_fraction": 0.93125,
+    "avg_unique_fraction": 0.37354166666666666,
     "source_dependent_rate": 1.0,
-    "all_same_rate": 0.0,
+    "all_same_rate": 0.06,
+    "issues": [],
+    "quality": "GOOD",
+    "viable": true
+  },
+  "max_min_<_one_minus": {
+    "name": "max_min_<_one_minus",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.93125,
+    "avg_unique_fraction": 0.3675,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.02,
     "issues": [],
     "quality": "GOOD",
     "viable": true
@@ -253,10 +352,10 @@
   "max_min_<_reciprocal": {
     "name": "max_min_<_reciprocal",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.90625,
-    "avg_unique_fraction": 0.525,
+    "avg_update_fraction": 0.93125,
+    "avg_unique_fraction": 0.3675,
     "source_dependent_rate": 1.0,
-    "all_same_rate": 0.0,
+    "all_same_rate": 0.02,
     "issues": [],
     "quality": "GOOD",
     "viable": true
@@ -264,10 +363,10 @@
   "max_min_<_square": {
     "name": "max_min_<_square",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.90625,
-    "avg_unique_fraction": 0.3625,
+    "avg_update_fraction": 0.93125,
+    "avg_unique_fraction": 0.37354166666666666,
     "source_dependent_rate": 1.0,
-    "all_same_rate": 0.0,
+    "all_same_rate": 0.06,
     "issues": [],
     "quality": "GOOD",
     "viable": true
@@ -276,7 +375,20 @@
     "name": "max_min_>",
     "convergence_rate": 1.0,
     "avg_update_fraction": 1.0,
-    "avg_unique_fraction": 0.7375,
+    "avg_unique_fraction": 0.731875,
+    "source_dependent_rate": 0.0,
+    "all_same_rate": 0.0,
+    "issues": [
+      "SOURCE_INDEPENDENT"
+    ],
+    "quality": "MARGINAL",
+    "viable": false
+  },
+  "max_min_>_one_minus": {
+    "name": "max_min_>_one_minus",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 1.0,
+    "avg_unique_fraction": 0.735625,
     "source_dependent_rate": 0.0,
     "all_same_rate": 0.0,
     "issues": [
@@ -289,7 +401,7 @@
     "name": "max_min_>_reciprocal",
     "convergence_rate": 1.0,
     "avg_update_fraction": 1.0,
-    "avg_unique_fraction": 0.74375,
+    "avg_unique_fraction": 0.735625,
     "source_dependent_rate": 0.0,
     "all_same_rate": 0.0,
     "issues": [
@@ -302,7 +414,7 @@
     "name": "max_min_>_square",
     "convergence_rate": 1.0,
     "avg_update_fraction": 1.0,
-    "avg_unique_fraction": 0.7375,
+    "avg_unique_fraction": 0.731875,
     "source_dependent_rate": 0.0,
     "all_same_rate": 0.0,
     "issues": [
@@ -315,7 +427,20 @@
     "name": "min_max_<",
     "convergence_rate": 1.0,
     "avg_update_fraction": 1.0,
-    "avg_unique_fraction": 0.74375,
+    "avg_unique_fraction": 0.735625,
+    "source_dependent_rate": 0.0,
+    "all_same_rate": 0.0,
+    "issues": [
+      "SOURCE_INDEPENDENT"
+    ],
+    "quality": "MARGINAL",
+    "viable": false
+  },
+  "min_max_<_one_minus": {
+    "name": "min_max_<_one_minus",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 1.0,
+    "avg_unique_fraction": 0.731875,
     "source_dependent_rate": 0.0,
     "all_same_rate": 0.0,
     "issues": [
@@ -328,7 +453,7 @@
     "name": "min_max_<_reciprocal",
     "convergence_rate": 1.0,
     "avg_update_fraction": 1.0,
-    "avg_unique_fraction": 0.7375,
+    "avg_unique_fraction": 0.731875,
     "source_dependent_rate": 0.0,
     "all_same_rate": 0.0,
     "issues": [
@@ -341,7 +466,7 @@
     "name": "min_max_<_square",
     "convergence_rate": 1.0,
     "avg_update_fraction": 1.0,
-    "avg_unique_fraction": 0.74375,
+    "avg_unique_fraction": 0.735625,
     "source_dependent_rate": 0.0,
     "all_same_rate": 0.0,
     "issues": [
@@ -353,10 +478,21 @@
   "min_max_>": {
     "name": "min_max_>",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.90625,
-    "avg_unique_fraction": 0.525,
+    "avg_update_fraction": 0.93125,
+    "avg_unique_fraction": 0.3675,
     "source_dependent_rate": 1.0,
-    "all_same_rate": 0.0,
+    "all_same_rate": 0.02,
+    "issues": [],
+    "quality": "GOOD",
+    "viable": true
+  },
+  "min_max_>_one_minus": {
+    "name": "min_max_>_one_minus",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.93125,
+    "avg_unique_fraction": 0.37354166666666666,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.06,
     "issues": [],
     "quality": "GOOD",
     "viable": true
@@ -364,10 +500,10 @@
   "min_max_>_reciprocal": {
     "name": "min_max_>_reciprocal",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.90625,
-    "avg_unique_fraction": 0.3625,
+    "avg_update_fraction": 0.93125,
+    "avg_unique_fraction": 0.37354166666666666,
     "source_dependent_rate": 1.0,
-    "all_same_rate": 0.0,
+    "all_same_rate": 0.06,
     "issues": [],
     "quality": "GOOD",
     "viable": true
@@ -375,10 +511,10 @@
   "min_max_>_square": {
     "name": "min_max_>_square",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.90625,
-    "avg_unique_fraction": 0.525,
+    "avg_update_fraction": 0.93125,
+    "avg_unique_fraction": 0.3675,
     "source_dependent_rate": 1.0,
-    "all_same_rate": 0.0,
+    "all_same_rate": 0.02,
     "issues": [],
     "quality": "GOOD",
     "viable": true
@@ -387,7 +523,22 @@
     "name": "min_min_<",
     "convergence_rate": 1.0,
     "avg_update_fraction": 1.0,
-    "avg_unique_fraction": 0.09375,
+    "avg_unique_fraction": 0.06875,
+    "source_dependent_rate": 0.0,
+    "all_same_rate": 1.0,
+    "issues": [
+      "LOW_DIVERSITY",
+      "SOURCE_INDEPENDENT",
+      "UNIFORM_OUTPUT"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "min_min_<_one_minus": {
+    "name": "min_min_<_one_minus",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 1.0,
+    "avg_unique_fraction": 0.06875,
     "source_dependent_rate": 0.0,
     "all_same_rate": 1.0,
     "issues": [
@@ -402,7 +553,7 @@
     "name": "min_min_<_reciprocal",
     "convergence_rate": 1.0,
     "avg_update_fraction": 1.0,
-    "avg_unique_fraction": 0.09375,
+    "avg_unique_fraction": 0.06875,
     "source_dependent_rate": 0.0,
     "all_same_rate": 1.0,
     "issues": [
@@ -417,7 +568,7 @@
     "name": "min_min_<_square",
     "convergence_rate": 1.0,
     "avg_update_fraction": 1.0,
-    "avg_unique_fraction": 0.09375,
+    "avg_unique_fraction": 0.06875,
     "source_dependent_rate": 0.0,
     "all_same_rate": 1.0,
     "issues": [
@@ -431,8 +582,23 @@
   "min_min_>": {
     "name": "min_min_>",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.025,
-    "avg_unique_fraction": 0.025,
+    "avg_update_fraction": 0.008333333333333333,
+    "avg_unique_fraction": 0.008333333333333333,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 1.0,
+    "issues": [
+      "NO_UPDATES",
+      "LOW_DIVERSITY",
+      "UNIFORM_OUTPUT"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "min_min_>_one_minus": {
+    "name": "min_min_>_one_minus",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.008333333333333333,
+    "avg_unique_fraction": 0.008333333333333333,
     "source_dependent_rate": 1.0,
     "all_same_rate": 1.0,
     "issues": [
@@ -446,8 +612,8 @@
   "min_min_>_reciprocal": {
     "name": "min_min_>_reciprocal",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.025,
-    "avg_unique_fraction": 0.025,
+    "avg_update_fraction": 0.008333333333333333,
+    "avg_unique_fraction": 0.008333333333333333,
     "source_dependent_rate": 1.0,
     "all_same_rate": 1.0,
     "issues": [
@@ -461,8 +627,8 @@
   "min_min_>_square": {
     "name": "min_min_>_square",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.025,
-    "avg_unique_fraction": 0.025,
+    "avg_update_fraction": 0.008333333333333333,
+    "avg_unique_fraction": 0.008333333333333333,
     "source_dependent_rate": 1.0,
     "all_same_rate": 1.0,
     "issues": [
@@ -476,13 +642,29 @@
   "multiply_max_<": {
     "name": "multiply_max_<",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.025,
-    "avg_unique_fraction": 0.11875,
+    "avg_update_fraction": 0.008333333333333333,
+    "avg_unique_fraction": 0.07708333333333334,
     "source_dependent_rate": 1.0,
-    "all_same_rate": 0.8,
+    "all_same_rate": 0.92,
     "issues": [
       "NO_UPDATES",
-      "LOW_DIVERSITY"
+      "LOW_DIVERSITY",
+      "UNIFORM_OUTPUT"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "multiply_max_<_one_minus": {
+    "name": "multiply_max_<_one_minus",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.008333333333333333,
+    "avg_unique_fraction": 0.07708333333333334,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.92,
+    "issues": [
+      "NO_UPDATES",
+      "LOW_DIVERSITY",
+      "UNIFORM_OUTPUT"
     ],
     "quality": "DEGENERATE",
     "viable": false
@@ -490,13 +672,14 @@
   "multiply_max_<_reciprocal": {
     "name": "multiply_max_<_reciprocal",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.025,
-    "avg_unique_fraction": 0.11875,
+    "avg_update_fraction": 0.008333333333333333,
+    "avg_unique_fraction": 0.07708333333333334,
     "source_dependent_rate": 1.0,
-    "all_same_rate": 0.8,
+    "all_same_rate": 0.92,
     "issues": [
       "NO_UPDATES",
-      "LOW_DIVERSITY"
+      "LOW_DIVERSITY",
+      "UNIFORM_OUTPUT"
     ],
     "quality": "DEGENERATE",
     "viable": false
@@ -504,13 +687,14 @@
   "multiply_max_<_square": {
     "name": "multiply_max_<_square",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.025,
-    "avg_unique_fraction": 0.11875,
+    "avg_update_fraction": 0.008333333333333333,
+    "avg_unique_fraction": 0.07708333333333334,
     "source_dependent_rate": 1.0,
-    "all_same_rate": 0.8,
+    "all_same_rate": 0.92,
     "issues": [
       "NO_UPDATES",
-      "LOW_DIVERSITY"
+      "LOW_DIVERSITY",
+      "UNIFORM_OUTPUT"
     ],
     "quality": "DEGENERATE",
     "viable": false
@@ -518,7 +702,18 @@
   "multiply_max_>": {
     "name": "multiply_max_>",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.90625,
+    "avg_update_fraction": 0.93125,
+    "avg_unique_fraction": 1.0,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.0,
+    "issues": [],
+    "quality": "GOOD",
+    "viable": true
+  },
+  "multiply_max_>_one_minus": {
+    "name": "multiply_max_>_one_minus",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.93125,
     "avg_unique_fraction": 1.0,
     "source_dependent_rate": 1.0,
     "all_same_rate": 0.0,
@@ -542,7 +737,7 @@
   "multiply_max_>_square": {
     "name": "multiply_max_>_square",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.90625,
+    "avg_update_fraction": 0.93125,
     "avg_unique_fraction": 1.0,
     "source_dependent_rate": 1.0,
     "all_same_rate": 0.0,
@@ -554,9 +749,20 @@
     "name": "multiply_min_<",
     "convergence_rate": 0.0,
     "avg_update_fraction": 1.0,
-    "avg_unique_fraction": 0.53125,
-    "source_dependent_rate": 1.0,
-    "all_same_rate": 0.5,
+    "avg_unique_fraction": 0.33291666666666664,
+    "source_dependent_rate": 0.98,
+    "all_same_rate": 0.6,
+    "issues": [],
+    "quality": "GOOD",
+    "viable": true
+  },
+  "multiply_min_<_one_minus": {
+    "name": "multiply_min_<_one_minus",
+    "convergence_rate": 0.0,
+    "avg_update_fraction": 1.0,
+    "avg_unique_fraction": 0.17625,
+    "source_dependent_rate": 0.9,
+    "all_same_rate": 0.78,
     "issues": [],
     "quality": "GOOD",
     "viable": true
@@ -564,7 +770,7 @@
   "multiply_min_<_reciprocal": {
     "name": "multiply_min_<_reciprocal",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.90625,
+    "avg_update_fraction": 0.93125,
     "avg_unique_fraction": 1.0,
     "source_dependent_rate": 1.0,
     "all_same_rate": 0.0,
@@ -576,23 +782,41 @@
     "name": "multiply_min_<_square",
     "convergence_rate": 0.0,
     "avg_update_fraction": 1.0,
-    "avg_unique_fraction": 0.20625,
-    "source_dependent_rate": 1.0,
-    "all_same_rate": 0.5,
-    "issues": [],
-    "quality": "GOOD",
-    "viable": true
+    "avg_unique_fraction": 0.12625,
+    "source_dependent_rate": 0.96,
+    "all_same_rate": 0.82,
+    "issues": [
+      "LOW_DIVERSITY"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
   },
   "multiply_min_>": {
     "name": "multiply_min_>",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.025,
-    "avg_unique_fraction": 0.11875,
+    "avg_update_fraction": 0.008333333333333333,
+    "avg_unique_fraction": 0.07708333333333334,
     "source_dependent_rate": 1.0,
-    "all_same_rate": 0.8,
+    "all_same_rate": 0.92,
     "issues": [
       "NO_UPDATES",
-      "LOW_DIVERSITY"
+      "LOW_DIVERSITY",
+      "UNIFORM_OUTPUT"
+    ],
+    "quality": "DEGENERATE",
+    "viable": false
+  },
+  "multiply_min_>_one_minus": {
+    "name": "multiply_min_>_one_minus",
+    "convergence_rate": 1.0,
+    "avg_update_fraction": 0.008333333333333333,
+    "avg_unique_fraction": 0.07708333333333334,
+    "source_dependent_rate": 1.0,
+    "all_same_rate": 0.92,
+    "issues": [
+      "NO_UPDATES",
+      "LOW_DIVERSITY",
+      "UNIFORM_OUTPUT"
     ],
     "quality": "DEGENERATE",
     "viable": false
@@ -600,13 +824,14 @@
   "multiply_min_>_reciprocal": {
     "name": "multiply_min_>_reciprocal",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.025,
-    "avg_unique_fraction": 0.11875,
+    "avg_update_fraction": 0.008333333333333333,
+    "avg_unique_fraction": 0.07708333333333334,
     "source_dependent_rate": 1.0,
-    "all_same_rate": 0.8,
+    "all_same_rate": 0.92,
     "issues": [
       "NO_UPDATES",
-      "LOW_DIVERSITY"
+      "LOW_DIVERSITY",
+      "UNIFORM_OUTPUT"
     ],
     "quality": "DEGENERATE",
     "viable": false
@@ -614,13 +839,14 @@
   "multiply_min_>_square": {
     "name": "multiply_min_>_square",
     "convergence_rate": 1.0,
-    "avg_update_fraction": 0.025,
-    "avg_unique_fraction": 0.11875,
+    "avg_update_fraction": 0.008333333333333333,
+    "avg_unique_fraction": 0.07708333333333334,
     "source_dependent_rate": 1.0,
-    "all_same_rate": 0.8,
+    "all_same_rate": 0.92,
     "issues": [
       "NO_UPDATES",
-      "LOW_DIVERSITY"
+      "LOW_DIVERSITY",
+      "UNIFORM_OUTPUT"
     ],
     "quality": "DEGENERATE",
     "viable": false
