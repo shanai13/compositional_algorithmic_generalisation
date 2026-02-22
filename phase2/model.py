@@ -402,6 +402,7 @@ class ConditionedModel:
         use_lstm: bool = False,
         learning_rate: float = 0.001,
         warmup_steps: int = 0,
+        train_steps: int = 10000,
         grad_clip_max_norm: float = 1.0,
         dropout_prob: float = 0.0,
         hint_teacher_forcing: float = 0.0,
@@ -459,16 +460,14 @@ class ConditionedModel:
 
         self.net_fn = hk.transform(_use_net)
 
-        # Optimizer with optional LR warmup.
+        # Optimizer with warmup + cosine decay.
         if warmup_steps > 0:
-            lr_schedule = optax.join_schedules(
-                schedules=[
-                    optax.linear_schedule(
-                        init_value=0.0, end_value=learning_rate,
-                        transition_steps=warmup_steps),
-                    optax.constant_schedule(learning_rate),
-                ],
-                boundaries=[warmup_steps],
+            lr_schedule = optax.warmup_cosine_decay_schedule(
+                init_value=0.0,
+                peak_value=learning_rate,
+                warmup_steps=warmup_steps,
+                decay_steps=train_steps,
+                end_value=learning_rate / 10,
             )
         else:
             lr_schedule = learning_rate

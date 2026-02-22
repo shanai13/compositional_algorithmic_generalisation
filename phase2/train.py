@@ -230,6 +230,7 @@ def train(config: TrainConfig):
         encoder_init=config.encoder_init, use_lstm=config.use_lstm,
         learning_rate=config.learning_rate,
         warmup_steps=config.warmup_steps,
+        train_steps=config.train_steps,
         grad_clip_max_norm=config.grad_clip_max_norm,
         dropout_prob=config.dropout_prob,
         hint_teacher_forcing=config.hint_teacher_forcing,
