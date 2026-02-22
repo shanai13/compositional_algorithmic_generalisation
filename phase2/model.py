@@ -121,8 +121,15 @@ class ConditioningEncoder(hk.Module):
         pred_onehot = jax.nn.one_hot(pi_final, n)  # (k, n, n) where [b,v,:] is one-hot at pi[b,v]
         pred_edge = jnp.transpose(pred_onehot, (0, 2, 1))  # (k, n, n) where [b,j,v]=1 if j=pred(v)
 
-        # Edge features: [weights, adjacency, predecessor] -> (k, n, n, 3)
-        edge_fts = jnp.stack([A, adj, pred_edge], axis=-1)
+        # Edge features: [weights, adjacency, predecessor, weight*pred] -> (k, n, n, 4)
+        # The A * pred_edge interaction is critical: it gives the encoder
+        # direct access to "what are the weights of predecessor edges?"
+        # Without it, the Linear edge projection can only compute linear
+        # combinations of A, adj, pred_edge — it cannot compute their
+        # product. But distinguishing weight transforms requires knowing
+        # whether high-weight or low-weight edges were selected as
+        # predecessors (order-preserving vs order-reversing transforms).
+        edge_fts = jnp.stack([A, adj, pred_edge, A * pred_edge], axis=-1)
 
         # Project to hidden dim.
         node_fts = hk.Linear(self.hidden_dim, name='node_in')(node_fts)
