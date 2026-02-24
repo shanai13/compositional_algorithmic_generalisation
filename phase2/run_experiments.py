@@ -1,7 +1,7 @@
 """Batch experiment runner for overnight cluster execution.
 
-Runs all training experiments sequentially, then eval-only diagnostics.
-Each experiment gets a unique wandb run name and checkpoint directory.
+Runs training experiments sequentially, then eval-only diagnostics.
+Each experiment gets a unique checkpoint directory.
 
 Usage:
     python -m phase2.run_experiments
@@ -10,16 +10,15 @@ Usage:
 import os
 import time
 from dataclasses import replace
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import clrs
 import jax
 import jax.numpy as jnp
 import numpy as np
 
-from phase0.variant_registry import (
-    BASE_VARIANTS, TRAIN_VARIANTS, TEST_VARIANTS,
-)
+import phase0.variant_registry as variant_registry
+from phase0.variant_registry import BASE_VARIANTS
 from phase1.data_pipeline import ConditionedDataPipeline, EvalPipeline
 from phase1.spec import RELAXATION_SPEC
 from phase1.sampler import RelaxationSampler
@@ -28,7 +27,7 @@ from phase2.train import TrainConfig, train, run_evaluation, evaluate_variant
 
 
 # ---------------------------------------------------------------------------
-# Variant lists
+# Variant groupings (non-overlapping, all 24 covered in 6 groups of 4)
 # ---------------------------------------------------------------------------
 
 ALL_GOOD = [
@@ -46,22 +45,39 @@ ALL_MARGINAL = [
 
 ALL_VIABLE = ALL_GOOD + ALL_MARGINAL
 
-ORIGINAL_15_TRAIN = [
-    'add_min_<', 'add_min_<_square',
-    'max_min_<', 'max_min_<_reciprocal',
-    'min_max_>', 'min_max_>_square',
-    'multiply_max_>', 'multiply_max_>_square',
-    'multiply_min_<_reciprocal',
-    'max_min_>', 'max_min_>_reciprocal', 'max_min_>_square',
-    'min_max_<', 'min_max_<_reciprocal', 'min_max_<_square',
-]
+# Non-overlapping groups: each variant appears in exactly one test group.
+# Latin square structure for transforms within GOOD families.
+GROUPS = {
+    'G1': [  # Standard test set
+        'add_min_<_reciprocal', 'max_min_<_square',
+        'min_max_>_reciprocal', 'multiply_max_>_one_minus',
+    ],
+    'G2': [
+        'add_min_<_one_minus', 'max_min_<_reciprocal',
+        'min_max_>_square', 'multiply_max_>',
+    ],
+    'G3': [
+        'add_min_<', 'max_min_<_one_minus',
+        'min_max_>', 'multiply_max_>_square',
+    ],
+    'G4': [
+        'add_min_<_square', 'max_min_<',
+        'min_max_>_one_minus', 'multiply_min_<_reciprocal',
+    ],
+    'G5': [  # MARGINAL
+        'max_min_>', 'max_min_>_one_minus',
+        'min_max_<_square', 'min_max_<_reciprocal',
+    ],
+    'G6': [  # MARGINAL
+        'max_min_>_square', 'max_min_>_reciprocal',
+        'min_max_<', 'min_max_<_one_minus',
+    ],
+}
 
-STANDARD_TEST = [
-    'add_min_<_reciprocal',
-    'max_min_<_square',
-    'min_max_>_reciprocal',
-    'multiply_max_>_one_minus',
-]
+# Verify complete coverage.
+_all_in_groups = sorted(sum(GROUPS.values(), []))
+assert _all_in_groups == sorted(ALL_VIABLE), \
+    f'Groups do not cover all variants: missing {set(ALL_VIABLE) - set(_all_in_groups)}'
 
 
 # ---------------------------------------------------------------------------
@@ -81,72 +97,43 @@ BASE = TrainConfig(
     warmup_steps=500,
     eval_every=500,
     eval_samples=256,
-    wandb_enabled=True,
-    wandb_project='compositional_algorithmic_generalisation',
-    wandb_entity='shanai',
+    wandb_enabled=False,
 )
-
-SHORT = replace(BASE, train_steps=3000, eval_every=500)
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def make_loo_split(holdout: str) -> Tuple[List[str], List[str]]:
-    """Train on all 24 viable minus holdout, test on holdout."""
-    train_v = [v for v in ALL_VIABLE if v != holdout]
-    return train_v, [holdout]
-
-
-def make_family_holdout_split(family_prefix: str) -> Tuple[List[str], List[str]]:
-    """Hold out all GOOD variants matching a (combine, agg, cmp) family."""
-    holdout = set()
-    for v in ALL_GOOD:
-        # Identity variant: exact match.
-        if v == family_prefix:
-            holdout.add(v)
-        # Variants with weight transform suffix.
-        for wt in ['_reciprocal', '_square', '_one_minus']:
-            if v == family_prefix + wt:
-                holdout.add(v)
-    train_v = [v for v in ALL_VIABLE if v not in holdout]
-    return train_v, sorted(holdout)
-
-
 def run_training_experiment(name: str, config: TrainConfig,
                             train_variants: List[str],
                             test_variants: List[str]):
     """Run a single training experiment with custom variant lists."""
-    import phase0.variant_registry as registry
-    old_train = registry.TRAIN_VARIANTS
-    old_test = registry.TEST_VARIANTS
+    old_train = variant_registry.TRAIN_VARIANTS
+    old_test = variant_registry.TEST_VARIANTS
 
     try:
-        registry.TRAIN_VARIANTS = list(train_variants)
-        registry.TEST_VARIANTS = list(test_variants)
+        variant_registry.TRAIN_VARIANTS = list(train_variants)
+        variant_registry.TEST_VARIANTS = list(test_variants)
 
-        print(f'\n  Config: n={config.n}, k={config.k}, batch={config.batch_size}, '
+        print(f'\n  Train variants ({len(train_variants)}), '
+              f'Test variants ({len(test_variants)}): {test_variants}')
+        print(f'  Config: n={config.n}, k={config.k}, batch={config.batch_size}, '
               f'hidden={config.hidden_dim}, z={config.z_dim}, '
-              f'd_node={config.d_node}, d_edge={config.d_edge}, '
-              f'd_graph={config.d_graph}, processor={config.processor_type}')
-        print(f'  Steps: {config.train_steps}, lr={config.learning_rate}')
+              f'd_edge={config.d_edge}, steps={config.train_steps}, '
+              f'lr={config.learning_rate}')
 
         return train(config, quiet=True)
     finally:
-        registry.TRAIN_VARIANTS = old_train
-        registry.TEST_VARIANTS = old_test
+        variant_registry.TRAIN_VARIANTS = old_train
+        variant_registry.TEST_VARIANTS = old_test
 
-
-# ---------------------------------------------------------------------------
-# Eval-only diagnostics
-# ---------------------------------------------------------------------------
 
 def build_model_from_checkpoint(checkpoint_dir: str, config: TrainConfig):
     """Build a model and restore from checkpoint."""
     dummy_pipe = ConditionedDataPipeline(
-        variant_names=list(TRAIN_VARIANTS), n=config.n, k=5,
-        batch_size=config.eval_batch_size, seed=999)
+        variant_names=list(variant_registry.TRAIN_VARIANTS),
+        n=config.n, k=5, batch_size=config.eval_batch_size, seed=999)
     dummy_batch = dummy_pipe.next()
 
     processor_factory = clrs.get_processor_factory(
@@ -177,6 +164,10 @@ def build_model_from_checkpoint(checkpoint_dir: str, config: TrainConfig):
     return model
 
 
+# ---------------------------------------------------------------------------
+# Eval-only diagnostics
+# ---------------------------------------------------------------------------
+
 def run_k_sweep(checkpoint_dir: str, config: TrainConfig,
                 k_values: List[int]):
     """Evaluate with varying numbers of conditioning examples."""
@@ -187,23 +178,26 @@ def run_k_sweep(checkpoint_dir: str, config: TrainConfig,
     model = build_model_from_checkpoint(checkpoint_dir, config)
     print(f'  Restored from {checkpoint_dir}/best.pkl')
 
-    rng = jax.random.PRNGKey(42)
+    test_variants = GROUPS['G1']
+    rng = jax.random.PRNGKey(13)
 
     for k in k_values:
         print(f'\n--- k={k} ---')
-        eval_k = max(k, 1)  # k=0 still needs k=1 for valid shapes
+        eval_k = max(k, 1)
         eval_pipe = EvalPipeline(
-            variant_names=STANDARD_TEST, n=config.n, k=eval_k,
+            variant_names=test_variants, n=config.n, k=eval_k,
             num_eval_samples=config.eval_samples,
             eval_batch_size=config.eval_batch_size, seed=123)
 
         accs = []
-        for name in STANDARD_TEST:
+        for name in test_variants:
             if k == 0:
-                # For k=0: run with k=1 conditioning but from a random
-                # mismatched variant. This gives an uninformative z.
+                # k=0: set z to zeros by running with dummy conditioning
+                # then zeroing the model's internal z.
+                # Simplest approach: evaluate normally but we need to
+                # inject zero z. For now, use k=1 with mismatched variant.
                 wrong_sampler = RelaxationSampler(
-                    variant=BASE_VARIANTS['max_min_>'],  # arbitrary
+                    variant=BASE_VARIANTS['max_min_>'],
                     n=config.n, seed=789, randomize_pos=False)
                 wrong_cond = wrong_sampler.next(1)
 
@@ -242,7 +236,7 @@ def run_k_sweep(checkpoint_dir: str, config: TrainConfig,
 
 
 def run_wrong_conditioning(checkpoint_dir: str, config: TrainConfig):
-    """Evaluate each test variant conditioned on a wrong variant's traces."""
+    """Evaluate each test variant conditioned on wrong variant's traces."""
     print('\n' + '=' * 60)
     print('DIAGNOSTIC: Wrong conditioning')
     print('=' * 60)
@@ -250,7 +244,8 @@ def run_wrong_conditioning(checkpoint_dir: str, config: TrainConfig):
     model = build_model_from_checkpoint(checkpoint_dir, config)
     print(f'  Restored from {checkpoint_dir}/best.pkl')
 
-    # Each test variant gets conditioned on a completely different family.
+    test_variants = GROUPS['G1']
+    # Each test variant conditioned on two different wrong variants.
     wrong_pairs = [
         ('add_min_<_reciprocal', 'min_max_>'),
         ('add_min_<_reciprocal', 'multiply_max_>_square'),
@@ -258,22 +253,24 @@ def run_wrong_conditioning(checkpoint_dir: str, config: TrainConfig):
         ('max_min_<_square', 'add_min_<_one_minus'),
         ('min_max_>_reciprocal', 'add_min_<'),
         ('min_max_>_reciprocal', 'max_min_<_reciprocal'),
+        ('multiply_max_>_one_minus', 'add_min_<'),
+        ('multiply_max_>_one_minus', 'min_max_>'),
     ]
 
-    rng = jax.random.PRNGKey(42)
+    rng = jax.random.PRNGKey(13)
 
-    # First: correct conditioning (reference).
+    # Correct conditioning reference.
     print(f'\n  --- Correct conditioning (reference) ---')
     eval_pipe = EvalPipeline(
-        variant_names=STANDARD_TEST, n=config.n, k=config.eval_k,
+        variant_names=test_variants, n=config.n, k=config.eval_k,
         num_eval_samples=config.eval_samples,
         eval_batch_size=config.eval_batch_size, seed=123)
-    for name in STANDARD_TEST:
+    for name in test_variants:
         rng, sub_key = jax.random.split(rng)
         metrics = evaluate_variant(model, eval_pipe, name, sub_key, config.eval_k)
         print(f'    {name:35s}: {metrics["pred_accuracy"]:.3f}')
 
-    # Then: wrong conditioning.
+    # Wrong conditioning.
     print(f'\n  --- Wrong conditioning ---')
     for test_name, wrong_name in wrong_pairs:
         query_sampler = RelaxationSampler(
@@ -306,6 +303,37 @@ def run_wrong_conditioning(checkpoint_dir: str, config: TrainConfig):
         print(f'    Test: {test_name:30s} | Cond: {wrong_name:25s} | Acc: {acc:.3f}')
 
 
+def run_ood_eval(checkpoint_dir: str, config: TrainConfig,
+                 n_values: List[int]):
+    """Evaluate at different graph sizes for OOD analysis."""
+    print('\n' + '=' * 60)
+    print('DIAGNOSTIC: OOD graph size sweep')
+    print('=' * 60)
+
+    model = build_model_from_checkpoint(checkpoint_dir, config)
+    print(f'  Restored from {checkpoint_dir}/best.pkl')
+
+    # Evaluate: 1 training variant + 4 test variants.
+    train_variant = 'add_min_<'
+    test_variants = GROUPS['G1']
+    all_variants = [train_variant] + test_variants
+
+    rng = jax.random.PRNGKey(13)
+
+    for n in n_values:
+        print(f'\n--- n={n} ---')
+        eval_pipe = EvalPipeline(
+            variant_names=all_variants, n=n, k=config.eval_k,
+            num_eval_samples=config.eval_samples,
+            eval_batch_size=config.eval_batch_size, seed=123)
+
+        for name in all_variants:
+            rng, sub_key = jax.random.split(rng)
+            metrics = evaluate_variant(model, eval_pipe, name, sub_key, config.eval_k)
+            tag = 'TRAIN' if name == train_variant else 'TEST '
+            print(f'  {tag} {name:35s}: {metrics["pred_accuracy"]:.3f}')
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -314,110 +342,134 @@ def run_all():
     t0 = time.time()
 
     # ==================================================================
-    # EXP 1: Main reference (21 train, 3 test, 5K steps)
+    # EXP 1: Main reference (G1 test, 5K steps)
     # ==================================================================
     print('\n' + '#' * 70)
-    print('# EXP 1: main_reference')
+    print('# EXP 1: main (G1 test)')
     print('#' * 70)
+    g1_train = [v for v in ALL_VIABLE if v not in GROUPS['G1']]
     run_training_experiment(
-        'EXP1: main_reference',
-        replace(BASE,
-                name='EXP1_main_reference',
+        'EXP1',
+        replace(BASE, name='EXP1_main',
                 checkpoint_dir='checkpoints/exp1_main'),
-        list(TRAIN_VARIANTS),
-        STANDARD_TEST,
+        g1_train, GROUPS['G1'],
     )
 
     # ==================================================================
-    # EXP 2: Ablation — no one_minus (15 train, 3 test)
+    # EXP 2-6: Group coverage (G2-G6 test, 5K steps each)
+    # ==================================================================
+    for i, gname in enumerate(['G2', 'G3', 'G4', 'G5', 'G6'], start=2):
+        print('\n' + '#' * 70)
+        print(f'# EXP {i}: {gname} test')
+        print('#' * 70)
+        g_train = [v for v in ALL_VIABLE if v not in GROUPS[gname]]
+        run_training_experiment(
+            f'EXP{i}',
+            replace(BASE, name=f'EXP{i}_{gname}',
+                    checkpoint_dir=f'checkpoints/exp{i}_{gname}'),
+            g_train, GROUPS[gname],
+        )
+
+    # ==================================================================
+    # Collect all test results and find 3 worst
     # ==================================================================
     print('\n' + '#' * 70)
-    print('# EXP 2: ablation_no_one_minus')
+    print('# Identifying 3 worst-performing variants for targeted LOO')
     print('#' * 70)
-    run_training_experiment(
-        'EXP2: no_one_minus',
-        replace(BASE,
-                name='EXP2_ablation_no_one_minus',
-                checkpoint_dir='checkpoints/exp2_no_one_minus'),
-        ORIGINAL_15_TRAIN,
-        STANDARD_TEST,
-    )
+
+    # Re-evaluate each group's checkpoint on its test variants.
+    all_test_accs: Dict[str, float] = {}
+
+    for i, gname in enumerate(['G1', 'G2', 'G3', 'G4', 'G5', 'G6'], start=1):
+        ckpt_dir = f'checkpoints/exp{i}_main' if i == 1 else f'checkpoints/exp{i}_{gname}'
+        config_eval = replace(BASE, checkpoint_dir=ckpt_dir)
+        model = build_model_from_checkpoint(ckpt_dir, config_eval)
+        rng = jax.random.PRNGKey(13)
+
+        eval_pipe = EvalPipeline(
+            variant_names=GROUPS[gname], n=config_eval.n,
+            k=config_eval.eval_k, num_eval_samples=config_eval.eval_samples,
+            eval_batch_size=config_eval.eval_batch_size, seed=123)
+
+        for name in GROUPS[gname]:
+            rng, sub_key = jax.random.split(rng)
+            metrics = evaluate_variant(model, eval_pipe, name, sub_key,
+                                       config_eval.eval_k)
+            all_test_accs[name] = metrics['pred_accuracy']
+
+    # Sort and print all.
+    print('\n  All test accuracies (sorted):')
+    sorted_variants = sorted(all_test_accs.items(), key=lambda x: x[1])
+    for name, acc in sorted_variants:
+        print(f'    {name:35s}: {acc:.3f}')
+
+    # Pick 3 worst.
+    worst_3 = [name for name, _ in sorted_variants[:3]]
+    print(f'\n  3 worst: {worst_3}')
 
     # ==================================================================
-    # EXP 3: Ablation — no edge z (d_edge=0)
+    # EXP 7-9: Targeted LOO on worst 3 (23 train, 1 test, 5K steps)
     # ==================================================================
-    print('\n' + '#' * 70)
-    print('# EXP 3: ablation_no_edge_z')
-    print('#' * 70)
-    run_training_experiment(
-        'EXP3: no_edge_z',
-        replace(BASE,
-                name='EXP3_ablation_no_edge_z',
-                checkpoint_dir='checkpoints/exp3_no_edge_z',
-                d_edge=0),
-        list(TRAIN_VARIANTS),
-        STANDARD_TEST,
-    )
-
-    # ==================================================================
-    # EXP 4–8: Leave-one-out (train on 23, test on 1)
-    # ==================================================================
-    loo_variants = [
-        'add_min_<_reciprocal',
-        'max_min_<_square',
-        'min_max_>_reciprocal',
-        'multiply_max_>_one_minus',
-        'multiply_min_<_reciprocal',
-    ]
-
-    for i, holdout in enumerate(loo_variants, start=4):
+    for i, holdout in enumerate(worst_3, start=7):
         safe = holdout.replace('<', 'lt').replace('>', 'gt')
         print('\n' + '#' * 70)
-        print(f'# EXP {i}: loo_{holdout}')
+        print(f'# EXP {i}: LOO {holdout}')
         print('#' * 70)
-
-        loo_train, loo_test = make_loo_split(holdout)
+        loo_train = [v for v in ALL_VIABLE if v != holdout]
         run_training_experiment(
-            f'EXP{i}: LOO {holdout}',
-            replace(SHORT,
-                    name=f'EXP{i}_loo_{safe}',
+            f'EXP{i}',
+            replace(BASE, name=f'EXP{i}_loo_{safe}',
                     checkpoint_dir=f'checkpoints/exp{i}_loo_{safe}'),
-            loo_train,
-            loo_test,
+            loo_train, [holdout],
         )
 
     # ==================================================================
-    # EXP 9–10: Family hold-out (never seen this combine operator)
+    # EXP 10: OOD graph sizes (n~U[8,20] training, 10K steps)
     # ==================================================================
-    families = [
-        ('add_min_<', 'add'),
-        ('min_max_>', 'min_max_gt'),
-    ]
+    print('\n' + '#' * 70)
+    print('# EXP 10: OOD graph sizes (n~U[8,20], 10K steps)')
+    print('#' * 70)
+    g1_train = [v for v in ALL_VIABLE if v not in GROUPS['G1']]
+    ood_config = replace(BASE,
+        name='EXP10_ood_sizes',
+        checkpoint_dir='checkpoints/exp10_ood',
+        train_steps=10000,
+        warmup_steps=1000,
+    )
+    # Train with variable n by patching the pipeline creation in train().
+    # We pass n_range through a custom attribute on config.
+    # Actually, we need to modify train() to support n_range.
+    # For now, use a simpler approach: modify the pipeline after creation.
+    # The cleanest way: add n_range to TrainConfig.
+    # But to avoid touching train.py again, we'll monkey-patch.
+    import phase1.data_pipeline as dp_module
+    _orig_init = dp_module.ConditionedDataPipeline.__init__
 
-    for i, (prefix, label) in enumerate(families, start=9):
-        print('\n' + '#' * 70)
-        print(f'# EXP {i}: family_holdout_{label}')
-        print('#' * 70)
+    def _patched_init(self, *args, **kwargs):
+        _orig_init(self, *args, **kwargs)
+        self.n_range = (8, 20)
 
-        fam_train, fam_test = make_family_holdout_split(prefix)
+    dp_module.ConditionedDataPipeline.__init__ = _patched_init
+    try:
         run_training_experiment(
-            f'EXP{i}: family_holdout_{label}',
-            replace(SHORT,
-                    name=f'EXP{i}_family_{label}',
-                    checkpoint_dir=f'checkpoints/exp{i}_family_{label}'),
-            fam_train,
-            fam_test,
+            'EXP10',
+            ood_config,
+            g1_train, GROUPS['G1'],
         )
+    finally:
+        dp_module.ConditionedDataPipeline.__init__ = _orig_init
+
+    # OOD eval sweep.
+    run_ood_eval('checkpoints/exp10_ood', ood_config,
+                 n_values=[8, 12, 16, 20, 24, 32, 48, 64])
 
     # ==================================================================
-    # EXP 11: k-sweep (eval only on EXP1 checkpoint)
+    # EXP 11-12: Eval-only diagnostics (on OOD checkpoint)
     # ==================================================================
-    run_k_sweep('checkpoints/exp1_main', BASE, k_values=[0, 1, 2, 5, 8])
+    run_k_sweep('checkpoints/exp10_ood', ood_config,
+                k_values=[0, 1, 2, 5, 8])
 
-    # ==================================================================
-    # EXP 12: Wrong conditioning (eval only on EXP1 checkpoint)
-    # ==================================================================
-    run_wrong_conditioning('checkpoints/exp1_main', BASE)
+    run_wrong_conditioning('checkpoints/exp10_ood', ood_config)
 
     # ==================================================================
     elapsed = time.time() - t0

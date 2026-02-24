@@ -79,6 +79,7 @@ class ConditionedDataPipeline:
         randomize_k: bool = False,
         k_range: tuple = (1, 2, 3, 5, 8),
         per_example_conditioning: bool = False,
+        n_range: Optional[tuple] = None,
     ):
         if variant_names is None:
             variant_names = list(TRAIN_VARIANTS)
@@ -90,6 +91,7 @@ class ConditionedDataPipeline:
         self.randomize_k = randomize_k
         self.k_range = k_range
         self.per_example_conditioning = per_example_conditioning
+        self.n_range = n_range  # (min_n, max_n) for variable graph size
         self.rng = np.random.RandomState(seed)
 
         # Create a sampler per variant with distinct seeds.
@@ -125,6 +127,11 @@ class ConditionedDataPipeline:
         pool = allowed_variants if allowed_variants is not None else self.variant_names
         k = self.rng.choice(self.k_range) if self.randomize_k else self.k
 
+        # Sample graph size for this batch if using variable n.
+        n_override = None
+        if self.n_range is not None:
+            n_override = int(self.rng.randint(self.n_range[0], self.n_range[1] + 1))
+
         if self.per_example_conditioning:
             # Mixed-variant batch: each query is independently sampled.
             query_feedbacks = []
@@ -134,10 +141,10 @@ class ConditionedDataPipeline:
             for _ in range(self.batch_size):
                 name = pool[self.rng.randint(len(pool))]
                 sampler = self.samplers[name]
-                query_feedbacks.append(sampler._generate_one())
+                query_feedbacks.append(sampler._generate_one(n_override))
                 # k conditioning examples for THIS query, same variant.
                 for _ in range(k):
-                    cond_feedbacks.append(sampler._generate_one())
+                    cond_feedbacks.append(sampler._generate_one(n_override))
                 variant_names_batch.append(name)
 
             query = _stack_feedbacks(query_feedbacks)

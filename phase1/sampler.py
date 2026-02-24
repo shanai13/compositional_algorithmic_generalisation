@@ -209,13 +209,19 @@ class RelaxationSampler:
         self.rng = np.random.RandomState(seed)
         self.randomize_pos = randomize_pos
 
-    def _generate_one(self) -> Feedback:
-        """Generate a single trace and convert to Feedback."""
+    def _generate_one(self, n_override: int = None) -> Feedback:
+        """Generate a single trace and convert to Feedback.
+
+        Args:
+            n_override: If set, use this graph size instead of self.n.
+                Used for variable-n training (OOD graph size experiments).
+        """
+        n = n_override if n_override is not None else self.n
         adj, weights = generate_er_graph(
-            self.n, p=self.p, weight_range=self.weight_range,
+            n, p=self.p, weight_range=self.weight_range,
             rng=self.rng, ensure_connected=True,
         )
-        source = self.rng.randint(self.n)
+        source = self.rng.randint(n)
         trace = parameterized_relaxation(
             adj, weights, source,
             combine=self.variant.combine,
@@ -226,7 +232,7 @@ class RelaxationSampler:
             weight_transform=self.variant.weight_transform,
         )
         return trace_to_feedback(
-            trace, self.n, randomize_pos=self.randomize_pos, rng=self.rng)
+            trace, n, randomize_pos=self.randomize_pos, rng=self.rng)
 
     def next(self, batch_size: int) -> Feedback:
         """Generate a batch of traces."""
