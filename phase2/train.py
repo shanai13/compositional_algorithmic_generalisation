@@ -22,7 +22,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from phase0.variant_registry import TRAIN_VARIANTS, TEST_VARIANTS, BASE_VARIANTS
+import phase0.variant_registry as variant_registry
 from phase1.data_pipeline import ConditionedDataPipeline, EvalPipeline
 from phase1.spec import RELAXATION_SPEC
 from phase2.model import ConditionedModel
@@ -189,9 +189,16 @@ def run_evaluation(model, config, rng_key, variant_names, label, step=None):
 # Training loop
 # ---------------------------------------------------------------------------
 
-def train(config: TrainConfig):
+def train(config: TrainConfig, quiet: bool = False):
+    """Train the conditioned model.
+
+    Args:
+        config: Training configuration.
+        quiet: If True, suppress per-step and per-variant intermediate
+            logging. Only prints config summary and final evaluation.
+    """
     print(f'=== Training: {config.name} ===')
-    print(f'  Variants: {len(TRAIN_VARIANTS)} train, {len(TEST_VARIANTS)} test')
+    print(f'  Variants: {len(variant_registry.TRAIN_VARIANTS)} train, {len(variant_registry.TEST_VARIANTS)} test')
     print(f'  Graph: n={config.n}, k={config.k}, batch={config.batch_size}')
     print(f'  Model: hidden={config.hidden_dim}, z={config.z_dim}, '
           f'd_node={config.d_node}, d_edge={config.d_edge}, '
@@ -205,7 +212,7 @@ def train(config: TrainConfig):
 
     # Data pipeline.
     pipeline = ConditionedDataPipeline(
-        variant_names=TRAIN_VARIANTS, n=config.n, k=config.k,
+        variant_names=variant_registry.TRAIN_VARIANTS, n=config.n, k=config.k,
         batch_size=config.batch_size, p=config.p,
         weight_range=config.weight_range, seed=config.seed,
         randomize_k=config.randomize_k, k_range=config.k_range,
@@ -239,11 +246,12 @@ def train(config: TrainConfig):
         checkpoint_path=config.checkpoint_dir,
     )
 
-    print('Initializing model...')
+    if not quiet:
+        print('Initializing model...')
     model.init(dummy_batch.query.features,
                dummy_batch.conditioning.features, seed=config.seed)
     n_params = sum(p.size for p in jax.tree_util.tree_leaves(model.params))
-    print(f'Parameters: {n_params:,}')
+    print(f'  Parameters: {n_params:,}')
 
     # Training loop.
     rng = jax.random.PRNGKey(config.seed)
@@ -252,7 +260,7 @@ def train(config: TrainConfig):
     t0 = time.time()
 
     # Episodic state.
-    active_variants = list(TRAIN_VARIANTS)
+    active_variants = list(variant_registry.TRAIN_VARIANTS)
     held_out_variants = []
 
     for step in range(1, config.train_steps + 1):
@@ -262,8 +270,8 @@ def train(config: TrainConfig):
             if step_in_episode == 0:
                 # Start new episode: choose held-out variants.
                 held_out_variants = list(ep_rng.choice(
-                    TRAIN_VARIANTS, config.episode_holdout, replace=False))
-                active_variants = [v for v in TRAIN_VARIANTS
+                    variant_registry.TRAIN_VARIANTS, config.episode_holdout, replace=False))
+                active_variants = [v for v in variant_registry.TRAIN_VARIANTS
                                    if v not in held_out_variants]
                 print(f'  [Episode] Held out: {held_out_variants}')
 
@@ -301,7 +309,7 @@ def train(config: TrainConfig):
                 'step': step,
             }, step=step)
 
-        if step % max(1, config.eval_every // 5) == 0:
+        if not quiet and step % max(1, config.eval_every // 5) == 0:
             elapsed = time.time() - t0
             phase = 'meta' if is_meta else 'train'
             print(f'  step {step}/{config.train_steps}: '
@@ -313,39 +321,44 @@ def train(config: TrainConfig):
             rng, eval_key = jax.random.split(rng)
 
             # Evaluate on training variants.
-            print(f'\n  --- Eval (step {step}) ---')
+            if not quiet:
+                print(f'\n  --- Eval (step {step}) ---')
             train_results, train_mean = run_evaluation(
-                model, config, eval_key, TRAIN_VARIANTS,
+                model, config, eval_key, variant_registry.TRAIN_VARIANTS,
                 'eval_train', step=step)
-            print(f'  Train variants mean pred_acc: {train_mean:.3f}')
-            for name, m in sorted(train_results.items()):
-                print(f'    {name:30s}: {m["pred_accuracy"]:.3f}')
+            if not quiet:
+                print(f'  Train variants mean pred_acc: {train_mean:.3f}')
+                for name, m in sorted(train_results.items()):
+                    print(f'    {name:30s}: {m["pred_accuracy"]:.3f}')
 
             # Evaluate on test variants.
             rng, eval_key = jax.random.split(rng)
             test_results, test_mean = run_evaluation(
-                model, config, eval_key, TEST_VARIANTS,
+                model, config, eval_key, variant_registry.TEST_VARIANTS,
                 'eval_test', step=step)
-            print(f'  Test variants mean pred_acc:  {test_mean:.3f}')
-            for name, m in sorted(test_results.items()):
-                print(f'    {name:30s}: {m["pred_accuracy"]:.3f}')
+            if not quiet:
+                print(f'  Test variants mean pred_acc:  {test_mean:.3f}')
+                for name, m in sorted(test_results.items()):
+                    print(f'    {name:30s}: {m["pred_accuracy"]:.3f}')
 
             # Checkpoint best.
             if train_mean > best_train_acc:
                 best_train_acc = train_mean
                 model.save_model('best.pkl')
-                print(f'  New best model saved (train_acc={best_train_acc:.3f})')
+                if not quiet:
+                    print(f'  New best model saved (train_acc={best_train_acc:.3f})')
 
-            print()
+            if not quiet:
+                print()
 
     # Final eval on best checkpoint.
     print('=== Final evaluation (best checkpoint) ===')
     model.restore_model('best.pkl')
     rng, eval_key = jax.random.split(rng)
     train_results, train_mean = run_evaluation(
-        model, config, eval_key, TRAIN_VARIANTS, 'final_train')
+        model, config, eval_key, variant_registry.TRAIN_VARIANTS, 'final_train')
     test_results, test_mean = run_evaluation(
-        model, config, eval_key, TEST_VARIANTS, 'final_test')
+        model, config, eval_key, variant_registry.TEST_VARIANTS, 'final_test')
 
     print(f'\nFinal train mean pred_acc: {train_mean:.3f}')
     print(f'Final test mean pred_acc:  {test_mean:.3f}')

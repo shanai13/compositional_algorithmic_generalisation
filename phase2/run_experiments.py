@@ -125,14 +125,13 @@ def run_training_experiment(name: str, config: TrainConfig,
         registry.TRAIN_VARIANTS = list(train_variants)
         registry.TEST_VARIANTS = list(test_variants)
 
-        print(f'\n  Train variants ({len(train_variants)}):')
-        for v in train_variants:
-            print(f'    {v}')
-        print(f'  Test variants ({len(test_variants)}):')
-        for v in test_variants:
-            print(f'    {v}')
+        print(f'\n  Config: n={config.n}, k={config.k}, batch={config.batch_size}, '
+              f'hidden={config.hidden_dim}, z={config.z_dim}, '
+              f'd_node={config.d_node}, d_edge={config.d_edge}, '
+              f'd_graph={config.d_graph}, processor={config.processor_type}')
+        print(f'  Steps: {config.train_steps}, lr={config.learning_rate}')
 
-        return train(config)
+        return train(config, quiet=True)
     finally:
         registry.TRAIN_VARIANTS = old_train
         registry.TEST_VARIANTS = old_test
