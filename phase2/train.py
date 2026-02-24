@@ -74,7 +74,7 @@ class TrainConfig:
     learning_rate: float = 0.0003
     warmup_steps: int = 1000          # linear LR warmup from 0 to learning_rate
     grad_clip_max_norm: float = 1.0
-    seed: int = 42
+    seed: int = 13
 
     # Per-example conditioning: each query gets its own k conditioning examples.
     per_example_conditioning: bool = True

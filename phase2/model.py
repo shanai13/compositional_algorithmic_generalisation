@@ -493,7 +493,7 @@ class ConditionedModel:
         self._jitted_predict = jax.jit(self._predict)
 
     def init(self, query_features: _Features, cond_features: _Features,
-             seed: int = 42):
+             seed: int = 13):
         """Initialize model parameters.
 
         Args:
