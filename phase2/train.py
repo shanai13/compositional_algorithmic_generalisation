@@ -62,11 +62,11 @@ class TrainConfig:
     nb_heads: int = 1
     nb_msg_passing_steps: int = 1
     use_lstm: bool = False
-    encode_hints: bool = True
-    decode_hints: bool = True
+    encode_hints: bool = False          # hints supervised but NOT encoded as inputs
+    decode_hints: bool = True            # hints predicted + supervised at each step
     encoder_init: str = 'xavier_on_scalars'
     dropout_prob: float = 0.0
-    hint_teacher_forcing: float = 0.5
+    hint_teacher_forcing: float = 0.0    # irrelevant with encode_hints=False
     hint_repred_mode: str = 'soft'
 
     # Training.

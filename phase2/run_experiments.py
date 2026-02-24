@@ -56,10 +56,11 @@ ORIGINAL_15_TRAIN = [
     'min_max_<', 'min_max_<_reciprocal', 'min_max_<_square',
 ]
 
-ORIGINAL_3_TEST = [
+STANDARD_TEST = [
     'add_min_<_reciprocal',
     'max_min_<_square',
     'min_max_>_reciprocal',
+    'multiply_max_>_one_minus',
 ]
 
 
@@ -192,12 +193,12 @@ def run_k_sweep(checkpoint_dir: str, config: TrainConfig,
         print(f'\n--- k={k} ---')
         eval_k = max(k, 1)  # k=0 still needs k=1 for valid shapes
         eval_pipe = EvalPipeline(
-            variant_names=ORIGINAL_3_TEST, n=config.n, k=eval_k,
+            variant_names=STANDARD_TEST, n=config.n, k=eval_k,
             num_eval_samples=config.eval_samples,
             eval_batch_size=config.eval_batch_size, seed=123)
 
         accs = []
-        for name in ORIGINAL_3_TEST:
+        for name in STANDARD_TEST:
             if k == 0:
                 # For k=0: run with k=1 conditioning but from a random
                 # mismatched variant. This gives an uninformative z.
@@ -264,10 +265,10 @@ def run_wrong_conditioning(checkpoint_dir: str, config: TrainConfig):
     # First: correct conditioning (reference).
     print(f'\n  --- Correct conditioning (reference) ---')
     eval_pipe = EvalPipeline(
-        variant_names=ORIGINAL_3_TEST, n=config.n, k=config.eval_k,
+        variant_names=STANDARD_TEST, n=config.n, k=config.eval_k,
         num_eval_samples=config.eval_samples,
         eval_batch_size=config.eval_batch_size, seed=123)
-    for name in ORIGINAL_3_TEST:
+    for name in STANDARD_TEST:
         rng, sub_key = jax.random.split(rng)
         metrics = evaluate_variant(model, eval_pipe, name, sub_key, config.eval_k)
         print(f'    {name:35s}: {metrics["pred_accuracy"]:.3f}')
@@ -324,7 +325,7 @@ def run_all():
                 name='EXP1_main_reference',
                 checkpoint_dir='checkpoints/exp1_main'),
         list(TRAIN_VARIANTS),
-        ORIGINAL_3_TEST,
+        STANDARD_TEST,
     )
 
     # ==================================================================
@@ -339,7 +340,7 @@ def run_all():
                 name='EXP2_ablation_no_one_minus',
                 checkpoint_dir='checkpoints/exp2_no_one_minus'),
         ORIGINAL_15_TRAIN,
-        ORIGINAL_3_TEST,
+        STANDARD_TEST,
     )
 
     # ==================================================================
@@ -355,7 +356,7 @@ def run_all():
                 checkpoint_dir='checkpoints/exp3_no_edge_z',
                 d_edge=0),
         list(TRAIN_VARIANTS),
-        ORIGINAL_3_TEST,
+        STANDARD_TEST,
     )
 
     # ==================================================================

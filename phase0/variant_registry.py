@@ -152,44 +152,30 @@ VIABLE_VARIANTS: List[str] = [
 # Train / test split (4-axis compositional)
 # ---------------------------------------------------------------------------
 #
-# 21 train + 3 test. Training includes 13 GOOD + 8 MARGINAL.
-# Test variants unchanged from previous runs for continuity.
+# 20 train + 4 test. Training includes 12 GOOD + 8 MARGINAL.
+# Test variants cover all 4 combine operators, both directions, and
+# both order types (preserving + reversing).
 #
-# The key addition: one_minus (w→1-w) is a second order-reversing transform
-# alongside reciprocal (w→1/w). It appears in GOOD training variants with
-# BOTH minimisation AND maximisation directions:
-#   - add_min_<_one_minus:      order-reversing + (min, <)
-#   - max_min_<_one_minus:      order-reversing + (min, <)
-#   - min_max_>_one_minus:      order-reversing + (max, >) ← KEY
-#   - multiply_max_>_one_minus: order-reversing + (max, >) ← KEY
+# Test variants — novel 4-tuples (each primitive seen individually in training):
+#   add_min_<_reciprocal:         add + min/< + reciprocal (reversing)
+#   max_min_<_square:             max + min/< + square (preserving)
+#   min_max_>_reciprocal:         min + max/> + reciprocal (reversing, hard)
+#   multiply_max_>_one_minus:     multiply + max/> + one_minus (reversing)
 #
-# This directly addresses the entanglement from Finding 7: the model now
-# sees order-reversal with (max, >) in GOOD training variants (via one_minus),
-# breaking the previous correlation where order-reversal only appeared with
-# (min, <) in GOOD variants. The test asks whether the model can transfer
-# this knowledge to reciprocal (a different order-reversing transform) in
-# the (max, >) context.
-#
-# Test variants — novel 4-tuples:
-#   add_min_<_reciprocal:    all primitives seen individually
-#   max_min_<_square:        all primitives seen individually
-#   min_max_>_reciprocal:    all primitives seen individually; the hard case
-#                            — requires composing reciprocal with (max, >)
-#
-# Primitive coverage in training (21 variants):
-#   combine:          add(3) max(7) min(7) multiply(4) — all 4 covered
-#   aggregate:        min(11) max(10) — both covered
-#   compare:          <(11) >(10) — both covered
-#   weight_transform: identity(6) reciprocal(4) square(4) one_minus(7)
+# Primitive coverage in training (20 variants):
+#   combine:          add(3) max(7) min(6) multiply(3) — all 4 covered
+#   aggregate:        min(10) max(10) — both covered
+#   compare:          <(10) >(10) — both covered
+#   weight_transform: identity(5) reciprocal(3) square(3) one_minus(5)
 #
 # Order-reversing coverage in GOOD training:
 #   reciprocal + (min, <): max_min_<_reciprocal, multiply_min_<_reciprocal
 #   one_minus  + (min, <): add_min_<_one_minus, max_min_<_one_minus
-#   one_minus  + (max, >): min_max_>_one_minus, multiply_max_>_one_minus
-#   reciprocal + (max, >): NONE — this is the held-out test combination
+#   one_minus  + (max, >): min_max_>_one_minus
+#   reciprocal + (max, >): NONE — held-out test combination
 
 TRAIN_VARIANTS: List[str] = [
-    # GOOD (13 — source-dependent)
+    # GOOD (12 — source-dependent)
     'add_min_<',                  # shortest path (identity)
     'add_min_<_square',           # shortest path (squared weights)
     'add_min_<_one_minus',        # shortest path (complement weights)
@@ -201,7 +187,6 @@ TRAIN_VARIANTS: List[str] = [
     'min_max_>_one_minus',        # widest path (complement) — order-reversing + (max,>)
     'multiply_max_>',             # most-reliable path (identity)
     'multiply_max_>_square',      # most-reliable path (squared)
-    'multiply_max_>_one_minus',   # most-reliable path (complement) — order-reversing + (max,>)
     'multiply_min_<_reciprocal',  # least-reliable path (reciprocal)
     # MARGINAL (8 — source-independent, adds primitive diversity)
     'max_min_>',                  # global min-maxweight (identity)
@@ -215,9 +200,10 @@ TRAIN_VARIANTS: List[str] = [
 ]
 
 TEST_VARIANTS: List[str] = [
-    'add_min_<_reciprocal',       # novel: add+min+<+reciprocal
-    'max_min_<_square',           # novel: max+min+<+square
-    'min_max_>_reciprocal',       # novel: min+max+>+reciprocal (the hard case)
+    'add_min_<_reciprocal',       # add + min/< + reciprocal (reversing)
+    'max_min_<_square',           # max + min/< + square (preserving)
+    'min_max_>_reciprocal',       # min + max/> + reciprocal (reversing, hard)
+    'multiply_max_>_one_minus',   # multiply + max/> + one_minus (reversing)
 ]
 
 
