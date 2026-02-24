@@ -328,16 +328,29 @@ def run_ood_eval(checkpoint_dir: str, config: TrainConfig,
 
     for n in n_values:
         print(f'\n--- n={n} ---')
-        eval_pipe = EvalPipeline(
-            variant_names=all_variants, n=n, k=config.eval_k,
-            num_eval_samples=config.eval_samples,
-            eval_batch_size=config.eval_batch_size, seed=123)
+        # Reduce batch size for large graphs to avoid OOM
+        # (triplet messages are O(n^3)).
+        eval_bs = config.eval_batch_size
+        if n > 32:
+            eval_bs = max(4, eval_bs // 4)
+        elif n > 20:
+            eval_bs = max(8, eval_bs // 2)
 
-        for name in all_variants:
-            rng, sub_key = jax.random.split(rng)
-            metrics = evaluate_variant(model, eval_pipe, name, sub_key, config.eval_k)
-            tag = 'TRAIN' if name == train_variant else 'TEST '
-            print(f'  {tag} {name:35s}: {metrics["pred_accuracy"]:.3f}')
+        try:
+            eval_pipe = EvalPipeline(
+                variant_names=all_variants, n=n, k=config.eval_k,
+                num_eval_samples=config.eval_samples,
+                eval_batch_size=eval_bs, seed=123)
+
+            for name in all_variants:
+                rng, sub_key = jax.random.split(rng)
+                metrics = evaluate_variant(model, eval_pipe, name, sub_key,
+                                           config.eval_k)
+                tag = 'TRAIN' if name == train_variant else 'TEST '
+                print(f'  {tag} {name:35s}: {metrics["pred_accuracy"]:.3f}')
+        except Exception as e:
+            print(f'  !!! n={n} FAILED (likely OOM): {e}')
+            print(f'  !!! Skipping to next graph size.')
 
 
 # ---------------------------------------------------------------------------
