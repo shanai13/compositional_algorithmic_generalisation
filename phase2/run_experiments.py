@@ -92,9 +92,9 @@ BASE = TrainConfig(
     d_graph=8,
     cond_hidden_dim=128,
     cond_nb_layers=2,
-    train_steps=5000,
+    train_steps=10000,
     learning_rate=0.0005,
-    warmup_steps=500,
+    warmup_steps=1000,
     eval_every=500,
     eval_samples=256,
     wandb_enabled=False,
@@ -373,45 +373,32 @@ def run_all():
     t0 = time.time()
 
     # ==================================================================
-    # EXP 1: Main reference (G1 test, 5K steps)
+    # EXP 1-6: Group coverage (10K steps each)
     # ==================================================================
-    print('\n' + '#' * 70)
-    print('# EXP 1: main (G1 test)')
-    print('#' * 70)
-    g1_train = [v for v in ALL_VIABLE if v not in GROUPS['G1']]
-    _safe_run('EXP1', run_training_experiment,
-        'EXP1',
-        replace(BASE, name='EXP1_main',
-                checkpoint_dir='checkpoints/exp1_main'),
-        g1_train, GROUPS['G1'],
-    )
-
-    # ==================================================================
-    # EXP 2-6: Group coverage (G2-G6 test, 5K steps each)
-    # ==================================================================
-    for i, gname in enumerate(['G2', 'G3', 'G4', 'G5', 'G6'], start=2):
+    for i, gname in enumerate(['G1', 'G2', 'G3', 'G4', 'G5', 'G6'], start=1):
         print('\n' + '#' * 70)
-        print(f'# EXP {i}: {gname} test')
+        print(f'# EXP {i}: {gname} test (10K steps)')
         print('#' * 70)
         g_train = [v for v in ALL_VIABLE if v not in GROUPS[gname]]
+        ckpt_name = 'exp1_main' if i == 1 else f'exp{i}_{gname}'
         _safe_run(f'EXP{i}', run_training_experiment,
             f'EXP{i}',
-            replace(BASE, name=f'EXP{i}_{gname}',
-                    checkpoint_dir=f'checkpoints/exp{i}_{gname}'),
+            replace(BASE, name=f'EXP{i}_{gname}' if i > 1 else 'EXP1_main',
+                    checkpoint_dir=f'checkpoints/{ckpt_name}'),
             g_train, GROUPS[gname],
         )
 
     # ==================================================================
-    # Collect all test results and find 3 worst
+    # Collect all test results and rank
     # ==================================================================
     print('\n' + '#' * 70)
-    print('# Identifying 3 worst-performing variants for targeted LOO')
+    print('# Full 24-variant ranking')
     print('#' * 70)
 
     all_test_accs: Dict[str, float] = {}
 
     for i, gname in enumerate(['G1', 'G2', 'G3', 'G4', 'G5', 'G6'], start=1):
-        ckpt_dir = f'checkpoints/exp{i}_main' if i == 1 else f'checkpoints/exp{i}_{gname}'
+        ckpt_dir = f'checkpoints/exp1_main' if i == 1 else f'checkpoints/exp{i}_{gname}'
         try:
             config_eval = replace(BASE, checkpoint_dir=ckpt_dir)
             model = build_model_from_checkpoint(ckpt_dir, config_eval)
@@ -430,76 +417,11 @@ def run_all():
                 all_test_accs[name] = metrics['pred_accuracy']
         except Exception as e:
             print(f'  !!! Failed to evaluate {gname}: {e}')
-            print(f'  !!! Skipping this group for worst-3 selection.')
 
-    # Sort and print all evaluated variants.
     print(f'\n  Test accuracies for {len(all_test_accs)}/24 variants (sorted):')
     sorted_variants = sorted(all_test_accs.items(), key=lambda x: x[1])
     for name, acc in sorted_variants:
         print(f'    {name:35s}: {acc:.3f}')
-
-    # Pick 3 worst (or fewer if not enough evaluated).
-    n_worst = min(3, len(sorted_variants))
-    worst_3 = [name for name, _ in sorted_variants[:n_worst]]
-    print(f'\n  {n_worst} worst: {worst_3}')
-
-    # ==================================================================
-    # EXP 7-9: Targeted LOO on worst 3 (23 train, 1 test, 5K steps)
-    # ==================================================================
-    for i, holdout in enumerate(worst_3, start=7):
-        safe = holdout.replace('<', 'lt').replace('>', 'gt')
-        print('\n' + '#' * 70)
-        print(f'# EXP {i}: LOO {holdout}')
-        print('#' * 70)
-        loo_train = [v for v in ALL_VIABLE if v != holdout]
-        _safe_run(f'EXP{i}', run_training_experiment,
-            f'EXP{i}',
-            replace(BASE, name=f'EXP{i}_loo_{safe}',
-                    checkpoint_dir=f'checkpoints/exp{i}_loo_{safe}'),
-            loo_train, [holdout],
-        )
-
-    # ==================================================================
-    # EXP 10: OOD graph sizes (n~U[8,20] training, 10K steps)
-    # ==================================================================
-    print('\n' + '#' * 70)
-    print('# EXP 10: OOD graph sizes (n~U[8,20], 10K steps)')
-    print('#' * 70)
-    g1_train = [v for v in ALL_VIABLE if v not in GROUPS['G1']]
-    ood_config = replace(BASE,
-        name='EXP10_ood_sizes',
-        checkpoint_dir='checkpoints/exp10_ood',
-        train_steps=10000,
-        warmup_steps=1000,
-    )
-
-    import phase1.data_pipeline as dp_module
-    _orig_init = dp_module.ConditionedDataPipeline.__init__
-
-    def _patched_init(self, *args, **kwargs):
-        _orig_init(self, *args, **kwargs)
-        self.n_range = (8, 20)
-
-    dp_module.ConditionedDataPipeline.__init__ = _patched_init
-    try:
-        _safe_run('EXP10', run_training_experiment,
-            'EXP10', ood_config, g1_train, GROUPS['G1'])
-    finally:
-        dp_module.ConditionedDataPipeline.__init__ = _orig_init
-
-    # OOD eval sweep.
-    _safe_run('OOD_eval', run_ood_eval,
-        'checkpoints/exp10_ood', ood_config,
-        [8, 12, 16, 20, 24, 32, 48, 64])
-
-    # ==================================================================
-    # EXP 11-12: Eval-only diagnostics (on OOD checkpoint)
-    # ==================================================================
-    _safe_run('k_sweep', run_k_sweep,
-        'checkpoints/exp10_ood', ood_config, [0, 1, 2, 5, 8])
-
-    _safe_run('wrong_cond', run_wrong_conditioning,
-        'checkpoints/exp10_ood', ood_config)
 
     # ==================================================================
     elapsed = time.time() - t0
