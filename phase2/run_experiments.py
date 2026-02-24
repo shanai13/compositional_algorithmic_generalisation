@@ -344,6 +344,18 @@ def run_ood_eval(checkpoint_dir: str, config: TrainConfig,
 # Main
 # ---------------------------------------------------------------------------
 
+def _safe_run(name, fn, *args, **kwargs):
+    """Run a function, catching and logging exceptions without aborting."""
+    try:
+        return fn(*args, **kwargs)
+    except Exception as e:
+        print(f'\n  !!! {name} FAILED: {e}')
+        import traceback
+        traceback.print_exc()
+        print(f'  !!! Continuing to next experiment...\n')
+        return None
+
+
 def run_all():
     t0 = time.time()
 
@@ -354,7 +366,7 @@ def run_all():
     print('# EXP 1: main (G1 test)')
     print('#' * 70)
     g1_train = [v for v in ALL_VIABLE if v not in GROUPS['G1']]
-    run_training_experiment(
+    _safe_run('EXP1', run_training_experiment,
         'EXP1',
         replace(BASE, name='EXP1_main',
                 checkpoint_dir='checkpoints/exp1_main'),
@@ -369,7 +381,7 @@ def run_all():
         print(f'# EXP {i}: {gname} test')
         print('#' * 70)
         g_train = [v for v in ALL_VIABLE if v not in GROUPS[gname]]
-        run_training_experiment(
+        _safe_run(f'EXP{i}', run_training_experiment,
             f'EXP{i}',
             replace(BASE, name=f'EXP{i}_{gname}',
                     checkpoint_dir=f'checkpoints/exp{i}_{gname}'),
@@ -383,35 +395,40 @@ def run_all():
     print('# Identifying 3 worst-performing variants for targeted LOO')
     print('#' * 70)
 
-    # Re-evaluate each group's checkpoint on its test variants.
     all_test_accs: Dict[str, float] = {}
 
     for i, gname in enumerate(['G1', 'G2', 'G3', 'G4', 'G5', 'G6'], start=1):
         ckpt_dir = f'checkpoints/exp{i}_main' if i == 1 else f'checkpoints/exp{i}_{gname}'
-        config_eval = replace(BASE, checkpoint_dir=ckpt_dir)
-        model = build_model_from_checkpoint(ckpt_dir, config_eval)
-        rng = jax.random.PRNGKey(13)
+        try:
+            config_eval = replace(BASE, checkpoint_dir=ckpt_dir)
+            model = build_model_from_checkpoint(ckpt_dir, config_eval)
+            rng = jax.random.PRNGKey(13)
 
-        eval_pipe = EvalPipeline(
-            variant_names=GROUPS[gname], n=config_eval.n,
-            k=config_eval.eval_k, num_eval_samples=config_eval.eval_samples,
-            eval_batch_size=config_eval.eval_batch_size, seed=123)
+            eval_pipe = EvalPipeline(
+                variant_names=GROUPS[gname], n=config_eval.n,
+                k=config_eval.eval_k,
+                num_eval_samples=config_eval.eval_samples,
+                eval_batch_size=config_eval.eval_batch_size, seed=123)
 
-        for name in GROUPS[gname]:
-            rng, sub_key = jax.random.split(rng)
-            metrics = evaluate_variant(model, eval_pipe, name, sub_key,
-                                       config_eval.eval_k)
-            all_test_accs[name] = metrics['pred_accuracy']
+            for name in GROUPS[gname]:
+                rng, sub_key = jax.random.split(rng)
+                metrics = evaluate_variant(model, eval_pipe, name, sub_key,
+                                           config_eval.eval_k)
+                all_test_accs[name] = metrics['pred_accuracy']
+        except Exception as e:
+            print(f'  !!! Failed to evaluate {gname}: {e}')
+            print(f'  !!! Skipping this group for worst-3 selection.')
 
-    # Sort and print all.
-    print('\n  All test accuracies (sorted):')
+    # Sort and print all evaluated variants.
+    print(f'\n  Test accuracies for {len(all_test_accs)}/24 variants (sorted):')
     sorted_variants = sorted(all_test_accs.items(), key=lambda x: x[1])
     for name, acc in sorted_variants:
         print(f'    {name:35s}: {acc:.3f}')
 
-    # Pick 3 worst.
-    worst_3 = [name for name, _ in sorted_variants[:3]]
-    print(f'\n  3 worst: {worst_3}')
+    # Pick 3 worst (or fewer if not enough evaluated).
+    n_worst = min(3, len(sorted_variants))
+    worst_3 = [name for name, _ in sorted_variants[:n_worst]]
+    print(f'\n  {n_worst} worst: {worst_3}')
 
     # ==================================================================
     # EXP 7-9: Targeted LOO on worst 3 (23 train, 1 test, 5K steps)
@@ -422,7 +439,7 @@ def run_all():
         print(f'# EXP {i}: LOO {holdout}')
         print('#' * 70)
         loo_train = [v for v in ALL_VIABLE if v != holdout]
-        run_training_experiment(
+        _safe_run(f'EXP{i}', run_training_experiment,
             f'EXP{i}',
             replace(BASE, name=f'EXP{i}_loo_{safe}',
                     checkpoint_dir=f'checkpoints/exp{i}_loo_{safe}'),
@@ -442,12 +459,7 @@ def run_all():
         train_steps=10000,
         warmup_steps=1000,
     )
-    # Train with variable n by patching the pipeline creation in train().
-    # We pass n_range through a custom attribute on config.
-    # Actually, we need to modify train() to support n_range.
-    # For now, use a simpler approach: modify the pipeline after creation.
-    # The cleanest way: add n_range to TrainConfig.
-    # But to avoid touching train.py again, we'll monkey-patch.
+
     import phase1.data_pipeline as dp_module
     _orig_init = dp_module.ConditionedDataPipeline.__init__
 
@@ -457,25 +469,24 @@ def run_all():
 
     dp_module.ConditionedDataPipeline.__init__ = _patched_init
     try:
-        run_training_experiment(
-            'EXP10',
-            ood_config,
-            g1_train, GROUPS['G1'],
-        )
+        _safe_run('EXP10', run_training_experiment,
+            'EXP10', ood_config, g1_train, GROUPS['G1'])
     finally:
         dp_module.ConditionedDataPipeline.__init__ = _orig_init
 
     # OOD eval sweep.
-    run_ood_eval('checkpoints/exp10_ood', ood_config,
-                 n_values=[8, 12, 16, 20, 24, 32, 48, 64])
+    _safe_run('OOD_eval', run_ood_eval,
+        'checkpoints/exp10_ood', ood_config,
+        [8, 12, 16, 20, 24, 32, 48, 64])
 
     # ==================================================================
     # EXP 11-12: Eval-only diagnostics (on OOD checkpoint)
     # ==================================================================
-    run_k_sweep('checkpoints/exp10_ood', ood_config,
-                k_values=[0, 1, 2, 5, 8])
+    _safe_run('k_sweep', run_k_sweep,
+        'checkpoints/exp10_ood', ood_config, [0, 1, 2, 5, 8])
 
-    run_wrong_conditioning('checkpoints/exp10_ood', ood_config)
+    _safe_run('wrong_cond', run_wrong_conditioning,
+        'checkpoints/exp10_ood', ood_config)
 
     # ==================================================================
     elapsed = time.time() - t0
