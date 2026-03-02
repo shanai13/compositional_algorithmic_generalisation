@@ -423,6 +423,68 @@ def run_all():
     for name, acc in sorted_variants:
         print(f'    {name:35s}: {acc:.3f}')
 
+    # Pick 3 worst.
+    worst_3 = [name for name, _ in sorted_variants[:3]]
+    print(f'\n  3 worst: {worst_3}')
+
+    # ==================================================================
+    # EXP 7-9: Targeted LOO on worst 3 (23 train, 1 test, 10K steps)
+    # ==================================================================
+    for i, holdout in enumerate(worst_3, start=7):
+        safe = holdout.replace('<', 'lt').replace('>', 'gt')
+        print('\n' + '#' * 70)
+        print(f'# EXP {i}: LOO {holdout}')
+        print('#' * 70)
+        loo_train = [v for v in ALL_VIABLE if v != holdout]
+        _safe_run(f'EXP{i}', run_training_experiment,
+            f'EXP{i}',
+            replace(BASE, name=f'EXP{i}_loo_{safe}',
+                    checkpoint_dir=f'checkpoints/exp{i}_loo_{safe}'),
+            loo_train, [holdout],
+        )
+
+    # ==================================================================
+    # EXP 10: OOD graph sizes (n~U[8,20] training, 10K steps)
+    # ==================================================================
+    print('\n' + '#' * 70)
+    print('# EXP 10: OOD graph sizes (n~U[8,20], 10K steps)')
+    print('#' * 70)
+    g1_train = [v for v in ALL_VIABLE if v not in GROUPS['G1']]
+    ood_config = replace(BASE,
+        name='EXP10_ood_sizes',
+        checkpoint_dir='checkpoints/exp10_ood',
+    )
+
+    import phase1.data_pipeline as dp_module
+    _orig_init = dp_module.ConditionedDataPipeline.__init__
+
+    def _patched_init(self, *args, **kwargs):
+        _orig_init(self, *args, **kwargs)
+        self.n_range = (8, 20)
+
+    dp_module.ConditionedDataPipeline.__init__ = _patched_init
+    try:
+        _safe_run('EXP10', run_training_experiment,
+            'EXP10', ood_config, g1_train, GROUPS['G1'],
+        )
+    finally:
+        dp_module.ConditionedDataPipeline.__init__ = _orig_init
+
+    # OOD eval sweep.
+    _safe_run('EXP10_ood_eval', run_ood_eval,
+        'checkpoints/exp10_ood', ood_config,
+        n_values=[8, 12, 16, 20, 24, 32, 48, 64])
+
+    # ==================================================================
+    # EXP 11-12: Eval-only diagnostics (on OOD checkpoint)
+    # ==================================================================
+    _safe_run('EXP11_k_sweep', run_k_sweep,
+        'checkpoints/exp10_ood', ood_config,
+        k_values=[0, 1, 2, 5, 8])
+
+    _safe_run('EXP12_wrong_cond', run_wrong_conditioning,
+        'checkpoints/exp10_ood', ood_config)
+
     # ==================================================================
     elapsed = time.time() - t0
     print('\n' + '=' * 70)
